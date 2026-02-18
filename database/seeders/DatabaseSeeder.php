@@ -17,6 +17,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(RolesAndPermissionsSeeder::class);
+
         // 1. Create a Test Hub (Coworking Owner)
         $hub = Tenant::create([
             'name' => 'Jucu Hub Coworking',
@@ -38,13 +40,32 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 2. Create the Hub Admin
-        User::create([
+        $hubAdmin = User::create([
             'tenant_id' => $hub->id,
             'name' => 'Zmeul Admin',
             'email' => 'admin@zml.ro',
             'password' => Hash::make('password'),
             'is_super_admin' => true,
         ]);
+        $hubAdmin->assignRole('super-admin');
+
+        // 2.1 Create Receptionist for Hub
+        $receptionist = User::create([
+            'tenant_id' => $hub->id,
+            'name' => 'Hub Receptionist',
+            'email' => 'receptionist@jucu.com', // changed domain to avoid zml.ro confusion
+            'password' => Hash::make('password'),
+        ]);
+        $receptionist->assignRole('receptionist');
+
+        // 2.2 Create Employee for Hub
+        $employee = User::create([
+            'tenant_id' => $hub->id,
+            'name' => 'Hub Employee',
+            'email' => 'employee@jucu.com',
+            'password' => Hash::make('password'),
+        ]);
+        $employee->assignRole('employee');
 
         // 3. Create Locations for the Hub
         $locA = Location::create(['tenant_id' => $hub->id, 'name' => 'Building A', 'slug' => 'building-a']);
@@ -60,13 +81,13 @@ class DatabaseSeeder extends Seeder
                 'plan' => 'free',
                 'status' => 'active',
             ]);
-            
-            User::create([
+            $subAdmin = User::create([
                 'tenant_id' => $child->id,
                 'name' => $name . ' Manager',
                 'email' => strtolower(str_replace(' ', '.', $name)) . '@example.com',
                 'password' => Hash::make('password'),
             ]);
+            $subAdmin->assignRole('admin');
         }
 
         // 5. Create Meeting Rooms linked to Locations

@@ -59,8 +59,14 @@
                 <a href="{{ route('superadmin.dashboard') }}" class="flex items-center px-4 py-4 text-sm font-bold rounded-2xl transition-all group {{ request()->routeIs('superadmin.dashboard') ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                     <span class="mr-4 text-xl">📊</span> Dashboard
                 </a>
-                <a href="{{ route('superadmin.tenants') }}" class="flex items-center px-4 py-4 text-sm font-bold rounded-2xl transition-all group {{ request()->routeIs('superadmin.tenants') ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                <a href="{{ route('superadmin.tenants') }}" class="flex items-center px-4 py-4 text-sm font-bold rounded-2xl transition-all group {{ request()->routeIs('superadmin.tenants*') ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                     <span class="mr-4 text-xl">🏢</span> Tenants
+                </a>
+                <a href="{{ route('superadmin.users') }}" class="flex items-center px-4 py-4 text-sm font-bold rounded-2xl transition-all group {{ request()->routeIs('superadmin.users*') ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                    <span class="mr-4 text-xl">👥</span> Users
+                </a>
+                <a href="{{ route('superadmin.roles') }}" class="flex items-center px-4 py-4 text-sm font-bold rounded-2xl transition-all group {{ request()->routeIs('superadmin.roles*') ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                    <span class="mr-4 text-xl">🛡️</span> RBAC & Roles
                 </a>
                 
                 <div class="pt-10 border-t border-slate-800 mt-10">

@@ -54,6 +54,8 @@ class KiteFlowSaaSTest extends TestCase
             ->set('last_name', 'Visitor')
             ->set('purpose', 'Business')
             ->call('submit')
-            ->assertSee('reached its visitor limit');
+            ->assertDispatched('notify', function ($event, $data) {
+                return $data['type'] === 'error' && str_contains($data['message'], 'reached its visitor limit');
+            });
     }
 }

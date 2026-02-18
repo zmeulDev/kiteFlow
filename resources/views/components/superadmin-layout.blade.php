@@ -33,12 +33,25 @@
             <a href="{{ route('superadmin.dashboard') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all {{ request()->routeIs('superadmin.dashboard') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                 <span class="mr-3">📊</span> Dashboard
             </a>
-            <a href="{{ route('superadmin.tenants') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all {{ request()->routeIs('superadmin.tenants') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+            <a href="{{ route('superadmin.tenants') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all {{ request()->routeIs('superadmin.tenants*') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
                 <span class="mr-3">🏢</span> Tenants (Offices)
+            </a>
+            <a href="{{ route('superadmin.users') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all {{ request()->routeIs('superadmin.users*') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                <span class="mr-3">👥</span> Users
+            </a>
+            <a href="{{ route('superadmin.roles') }}" class="flex items-center px-4 py-3 text-sm font-medium rounded-xl transition-all {{ request()->routeIs('superadmin.roles*') ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white' }}">
+                <span class="mr-3">🛡️</span> RBAC & Roles
             </a>
             <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 text-sm font-medium text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
                 <span class="mr-3">🏠</span> Return to App
             </a>
+            
+            <form method="POST" action="{{ route('logout') }}" class="mt-8">
+                @csrf
+                <button type="submit" class="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-400 rounded-xl hover:bg-slate-800 hover:text-white transition-all">
+                    <span class="mr-3">🚪</span> Log Out
+                </button>
+            </form>
         </nav>
     </aside>
 

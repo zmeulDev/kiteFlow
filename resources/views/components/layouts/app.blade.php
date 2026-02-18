@@ -117,7 +117,7 @@
                 @endif
             </nav>
 
-            <div class="p-6 border-t border-slate-800">
+            <div class="p-6 border-t border-slate-800 space-y-4">
                 <a href="{{ route('profile') }}" class="flex items-center space-x-4 p-4 rounded-3xl hover:bg-slate-800 transition-all text-white group border border-transparent hover:border-slate-700">
                     <div class="h-12 w-12 rounded-2xl bg-indigo-600 flex items-center justify-center font-black shadow-lg shadow-indigo-500/20 group-hover:scale-105 transition-transform">
                         {{ substr(auth()->user()->name, 0, 1) }}
@@ -127,6 +127,13 @@
                         <div class="text-[10px] text-slate-500 uppercase font-bold tracking-widest mt-0.5">Administrator</div>
                     </div>
                 </a>
+                
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="flex items-center w-full px-4 py-3 text-sm font-bold text-slate-400 rounded-2xl hover:bg-slate-800 hover:text-white transition-all group">
+                        <span class="mr-4 text-xl opacity-70 group-hover:opacity-100 group-hover:scale-110 transition-all">🚪</span> Log Out
+                    </button>
+                </form>
             </div>
         </aside>
 

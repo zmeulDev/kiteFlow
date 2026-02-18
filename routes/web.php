@@ -1,99 +1,61 @@
 <?php
 
-use App\Livewire\Kiosk\FastPass;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use App\Models\Tenant;
-use App\Models\Visit;
+use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SuperAdminController;
+use App\Http\Controllers\KioskController;
+use App\Livewire\Superadmin\TenantShow;
+use App\Livewire\Dashboard\NotificationHistory;
+use App\Livewire\Kiosk\KioskMain;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Here is where you can register web routes for your application. These
+| routes are loaded by the RouteServiceProvider and all of them will
+| be assigned to the "web" middleware group. Make something great!
+|
+*/
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::middleware(['auth', 'superadmin'])->prefix('superadmin')->group(function () {
-    Route::get('/', function () {
-        return view('superadmin.dashboard');
-    })->name('superadmin.dashboard');
+// Authentication
+Route::get('/register', [AuthController::class, 'registerForm'])->name('register');
+Route::get('/login', [AuthController::class, 'loginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 
-    Route::get('/tenants', function () {
-        return view('superadmin.tenants');
-    })->name('superadmin.tenants');
-
-    Route::get('/tenants/{id}', \App\Livewire\Superadmin\TenantShow::class)->name('superadmin.tenants.show');
+// Superadmin Routes
+Route::middleware(['auth', 'role:super-admin'])->prefix('superadmin')->group(function () {
+    Route::get('/', [SuperAdminController::class, 'dashboard'])->name('superadmin.dashboard');
+    Route::get('/tenants', [SuperAdminController::class, 'tenants'])->name('superadmin.tenants');
+    Route::get('/tenants/{id}', TenantShow::class)->name('superadmin.tenants.show');
+    Route::get('/users', [SuperAdminController::class, 'users'])->name('superadmin.users');
+    Route::get('/roles', [SuperAdminController::class, 'roles'])->name('superadmin.roles');
 });
 
-Route::get('/register', function () {
-    return view('register');
-})->name('register');
-
-Route::get('/login', function () {
-    return view('login');
-})->name('login');
-
-Route::post('/login', function (Request $request) {
-    $credentials = $request->validate([
-        'email' => ['required', 'email'],
-        'password' => ['required'],
-    ]);
-
-    if (auth()->attempt($credentials)) {
-        $request->session()->regenerate();
-        session()->put('tenant_id', auth()->user()->tenant_id);
-        return redirect()->intended('dashboard');
-    }
-
-    return back()->withErrors([
-        'email' => 'The provided credentials do not match our records.',
-    ])->onlyInput('email');
-})->name('login.post');
-
+// Dashboard & Tenant Routes
 Route::middleware(['auth'])->group(function () {
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/calendar', [DashboardController::class, 'calendar'])->name('calendar');
+    Route::get('/rooms', [DashboardController::class, 'rooms'])->name('rooms');
+    
+    // Only admins or receptionists can manage sub-tenants
+    Route::middleware(['role:admin|receptionist'])->group(function () {
+        Route::get('/sub-tenants', [DashboardController::class, 'subTenants'])->name('sub-tenants');
+    });
 
-    Route::get('/calendar', function () {
-        return view('calendar');
-    })->name('calendar');
-
-    Route::get('/rooms', function () {
-        return view('rooms');
-    })->name('rooms');
-
-    Route::get('/sub-tenants', function () {
-        if (!auth()->user()->tenant->is_hub) return redirect()->route('dashboard');
-        return view('sub-tenants');
-    })->name('sub-tenants');
-
-    Route::get('/settings', function () {
-        return view('settings');
-    })->name('settings');
-
-    Route::get('/profile', function () {
-        return view('profile');
-    })->name('profile');
-
-    Route::get('/notifications', \App\Livewire\Dashboard\NotificationHistory::class)->name('notifications');
-
-    Route::post('/logout', function (\Illuminate\Http\Request $request) {
-        if (session()->has('impersonator_id')) {
-            $superAdmin = \App\Models\User::find(session('impersonator_id'));
-            if ($superAdmin) {
-                auth()->login($superAdmin);
-                session()->forget(['impersonator_id', 'tenant_id']);
-                return redirect()->route('superadmin.dashboard');
-            }
-        }
-
-        auth()->logout();
-        $request->session()->invalidate();
-        $request->session()->regenerateToken();
-        return redirect('/');
-    })->name('logout');
+    Route::get('/settings', [DashboardController::class, 'settings'])->name('settings');
+    Route::get('/profile', [DashboardController::class, 'profile'])->name('profile');
+    
+    Route::get('/notifications', NotificationHistory::class)->name('notifications');
+    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 });
 
-Route::get('/kiosk/{tenant:slug}', \App\Livewire\Kiosk\KioskMain::class)->name('kiosk');
-
-Route::get('/check-in/{token}', function ($token) {
-    return view('kiosk-fast-pass', ['token' => $token]);
-})->name('check-in.fast-pass');
+// Kiosk Routes
+Route::get('/kiosk/{tenant:slug}', KioskMain::class)->name('kiosk');
+Route::get('/check-in/{token}', [KioskController::class, 'checkInFastPass'])->name('check-in.fast-pass');
