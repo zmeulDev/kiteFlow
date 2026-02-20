@@ -1,18 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Web\KioskController;
-use App\Http\Controllers\Web\AuthController;
+use Livewire\Volt\Volt;
 
-Route::get('/kiosk', [KioskController::class, 'index'])->name('kiosk');
-Route::get('/kiosk/{tenant:slug}', [KioskController::class, 'show'])->name('kiosk.tenant');
-
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
-
-Route::middleware('auth')->group(function () {
-    Route::get('/dashboard', [AuthController::class, 'dashboard'])->name('dashboard');
-    Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/', function () {
+    return view('welcome');
 });
 
-Route::get('/', fn() => redirect('/kiosk'));
+Volt::route('/kiosk/{tenant}', 'kiosk-mode');
+Volt::route('/admin/dashboard', 'tenant-admin-dashboard');
+Volt::route('/admin/visitors', 'visitor-profiles');
+Volt::route('/super-admin/dashboard', 'super-admin-dashboard');
+Volt::route('/super-admin/tenants/{tenant}', 'super-admin-tenant-detail')->name('super-admin.tenant.detail');
+
+Route::get('/tenants/{tenant}/billing', [\App\Http\Controllers\SubscriptionController::class, 'billingPortal'])
+     ->name('tenant.billing');

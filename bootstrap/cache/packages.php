@@ -1,9 +1,9 @@
 <?php return array (
-  'laravel/breeze' => 
+  'laravel/cashier' => 
   array (
     'providers' => 
     array (
-      0 => 'Laravel\\Breeze\\BreezeServiceProvider',
+      0 => 'Laravel\\Cashier\\CashierServiceProvider',
     ),
   ),
   'laravel/pail' => 
@@ -43,6 +43,13 @@
     'providers' => 
     array (
       0 => 'Livewire\\LivewireServiceProvider',
+    ),
+  ),
+  'livewire/volt' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'Livewire\\Volt\\VoltServiceProvider',
     ),
   ),
   'nesbot/carbon' => 

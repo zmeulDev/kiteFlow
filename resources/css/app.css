@@ -1,4 +1,5 @@
 @import 'tailwindcss';
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -6,6 +7,203 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+:root {
+    /* Wireframe Light Base */
+    --bg-main: #F4F5F7;
+    --bg-surface: #FFFFFF;
+
+    /* Vibrant Accent (Coral/Red from wireframes) */
+    --primary: #FF4B4B;
+    --primary-hover: #E63E3E;
+
+    /* Text */
+    --text-primary: #111827;
+    --text-secondary: #6B7280;
+    --text-muted: #9CA3AF;
+
+    /* Borders & Soft UI */
+    --border-light: #E5E7EB;
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 8px;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    margin: 0;
+    padding: 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: var(--font-sans);
+    font-weight: 800;
+    /* Heavy weight matching the "My Garage" header */
+    letter-spacing: -0.03em;
+    color: var(--text-primary);
+}
+
+/* Base UI Components matching the wireframes */
+
+/* The Card */
+.card {
+    background-color: var(--bg-surface);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    /* Extremely soft shadow typical of this design style, or we can keep it purely flat if strictly required, but wireframes imply floating cards */
+    border: none;
+    transition: transform 0.2s ease;
+}
+
+/* Form Controls */
+.input-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-group label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.75rem;
+}
+
+.input {
+    width: 100%;
+    background-color: var(--bg-main);
+    border: 2px solid transparent;
+    color: var(--text-primary);
+    padding: 1rem 1.25rem;
+    font-size: 1rem;
+    font-family: var(--font-sans);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease-in-out;
+}
+
+.input:focus {
+    outline: none;
+    border-color: transparent;
+    background-color: var(--bg-main);
+    box-shadow: 0 0 0 3px rgba(255, 75, 75, 0.2);
+}
+
+.input::placeholder {
+    color: var(--text-muted);
+}
+
+/* Prominent Accent Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary);
+    color: #FFFFFF;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 1rem 1.5rem;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.btn:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-2px);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-outline {
+    background-color: transparent;
+    border: 2px solid var(--border-light);
+    color: var(--text-primary);
+}
+
+.btn-outline:hover {
+    background-color: var(--bg-main);
+    border-color: var(--text-secondary);
+}
+
+/* Badges / Tags (like the "Road Tax overdue" tag) */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.35rem 0.75rem;
+    border-radius: 9999px;
+    /* Pill shape */
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-danger {
+    background-color: rgba(255, 75, 75, 0.1);
+    color: var(--primary);
+}
+
+/* Layout Utilities */
+.data-grid {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+    text-align: left;
+}
+
+.data-grid th {
+    color: var(--text-secondary);
+    font-weight: 600;
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.data-grid td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+}
+
+.data-grid tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* Utility Animations */
+@keyframes fade-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.animate-fade-in-up {
+    animation: fade-in-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.delay-100 {
+    animation-delay: 100ms;
+}
+
+.delay-200 {
+    animation-delay: 200ms;
 }

@@ -2,42 +2,41 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Cashier\Billable;
 
-class Tenant extends \Illuminate\Database\Eloquent\Model
+class Tenant extends Model
 {
-    use HasFactory, SoftDeletes;
+    use Billable;
 
     protected $fillable = [
+        'parent_id',
         'name',
-        'slug',
+        'domain',
         'logo_path',
-        'address',
-        'city',
-        'country',
-        'phone',
-        'email',
-        'contact_person',
-        'gdpr_retention_months',
         'nda_text',
-        'terms_text',
-        'is_active',
+        'data_retention_days',
+        'stripe_id',
+        'contract_start_date',
+        'contract_end_date',
+        'status',
     ];
 
-    protected function casts(): array
+    protected $casts = [
+        'contract_start_date' => 'date',
+        'contract_end_date' => 'date',
+    ];
+
+    public function parent(): BelongsTo
     {
-        return [
-            'is_active' => 'boolean',
-            'gdpr_retention_months' => 'integer',
-        ];
+        return $this->belongsTo(Tenant::class, 'parent_id');
     }
 
     public function subTenants(): HasMany
     {
-        return $this->hasMany(SubTenant::class);
+        return $this->hasMany(Tenant::class, 'parent_id');
     }
 
     public function users(): HasMany
@@ -45,9 +44,9 @@ class Tenant extends \Illuminate\Database\Eloquent\Model
         return $this->hasMany(User::class);
     }
 
-    public function buildings(): HasMany
+    public function locations(): HasMany
     {
-        return $this->hasMany(Building::class);
+        return $this->hasMany(Location::class);
     }
 
     public function meetingRooms(): HasMany
@@ -55,31 +54,18 @@ class Tenant extends \Illuminate\Database\Eloquent\Model
         return $this->hasMany(MeetingRoom::class);
     }
 
-    public function visits(): HasMany
-    {
-        return $this->hasMany(Visit::class);
-    }
-
     public function visitors(): HasMany
     {
         return $this->hasMany(Visitor::class);
     }
 
-    public function settings(): HasMany
+    public function visits(): HasMany
     {
-        return $this->hasMany(Setting::class);
+        return $this->hasMany(Visit::class);
     }
 
-    public function getSetting(string $key, mixed $default = null): mixed
+    public function contacts(): HasMany
     {
-        return $this->settings()->where('key', $key)->first()?->value ?? $default;
-    }
-
-    public function setSetting(string $key, mixed $value): Setting
-    {
-        return $this->settings()->updateOrCreate(
-            ['key' => $key],
-            ['value' => $value]
-        );
+        return $this->hasMany(TenantContact::class);
     }
 }

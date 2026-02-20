@@ -8,13 +8,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
-        apiPrefix: 'api',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->web(append: [
+            \App\Http\Middleware\CheckUserIsActive::class,
+        ]);
+        $middleware->api(append: [
+            \App\Http\Middleware\CheckUserIsActive::class,
+        ]);
         $middleware->alias([
-            'csrf' => \App\Http\Middleware\VerifyCsrfToken::class,
+            'subscribed' => \App\Http\Middleware\Subscribed::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
