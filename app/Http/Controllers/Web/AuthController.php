@@ -39,6 +39,7 @@ class AuthController extends Controller
         }
 
         Auth::login($user);
+        $request->session()->regenerate();
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Login successful', 'redirect' => '/dashboard'], 200);

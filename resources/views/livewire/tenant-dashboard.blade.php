@@ -1,14 +1,5 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - {{ $tenant?->name }}</title>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+<div>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; }
-        
         .layout { display: flex; min-height: 100vh; }
         .sidebar { width: 240px; background: #1a1a1a; color: #fff; padding: 1.5rem; position: fixed; height: 100vh; }
         .sidebar-logo { font-size: 1.25rem; font-weight: 700; margin-bottom: 2rem; }
@@ -62,17 +53,16 @@
             .form-group.full { grid-column: span 1; }
         }
     </style>
-</head>
-<body>
-    <div class="layout">
+    <div class="layout" x-data="{ tab: $wire.entangle('tab') }">
         <div class="sidebar">
             <div class="sidebar-logo">{{ $tenant?->name }}</div>
             <nav>
-                <a href="#" class="nav-item active" @click.prevent="$set('tab', 'overview')">Overview</a>
-                <a href="#" class="nav-item" @click.prevent="$set('tab', 'visits')">Visits</a>
-                <a href="#" class="nav-item" @click.prevent="$set('tab', 'rooms')">Meeting Rooms</a>
-                <a href="#" class="nav-item" @click.prevent="$set('tab', 'buildings')">Buildings</a>
-                <a href="#" class="nav-item" @click.prevent="$set('tab', 'settings')">Settings</a>
+                <a href="#" class="nav-item active" @click.prevent="tab = 'overview'">Overview</a>
+                <a href="#" class="nav-item" @click.prevent="tab = 'visits'">Visits</a>
+                <a href="#" class="nav-item" @click.prevent="tab = 'rooms'">Meeting Rooms</a>
+                <a href="#" class="nav-item" @click.prevent="tab = 'buildings'">Buildings</a>
+                <a href="#" class="nav-item" @click.prevent="tab = 'subtenants'">Sub-Tenants</a>
+                <a href="#" class="nav-item" @click.prevent="tab = 'settings'">Settings</a>
             </nav>
         </div>
         
@@ -104,45 +94,295 @@
             
             <!-- Tabs -->
             <div class="tabs">
-                <button class="tab" :class="{ 'active': tab === 'overview' }" @click="$set('tab', 'overview')">Overview</button>
-                <button class="tab" :class="{ 'active': tab === 'visits' }" @click="$set('tab', 'visits')">Visits</button>
-                <button class="tab" :class="{ 'active': tab === 'rooms' }" @click="$set('tab', 'rooms')">Rooms</button>
-                <button class="tab" :class="{ 'active': tab === 'settings' }" @click="$set('tab', 'settings')">Settings</button>
+                <button class="tab" :class="{ 'active': tab === 'overview' }" @click="tab = 'overview'">Overview</button>
+                <button class="tab" :class="{ 'active': tab === 'visits' }" @click="tab = 'visits'">Visits</button>
+                <button class="tab" :class="{ 'active': tab === 'rooms' }" @click="tab = 'rooms'">Rooms</button>
+                <button class="tab" :class="{ 'active': tab === 'buildings' }" @click="tab = 'buildings'">Buildings</button>
+                <button class="tab" :class="{ 'active': tab === 'subtenants' }" @click="tab = 'subtenants'">Sub-Tenants</button>
+                <button class="tab" :class="{ 'active': tab === 'settings' }" @click="tab = 'settings'">Settings</button>
             </div>
             
             <!-- Overview Tab -->
-            <div x-show="tab === 'overview'" class="card">
-                <div class="card-header">
-                    <div class="card-title">Recent Visits</div>
+            <div x-show="tab === 'overview'">
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <div class="card-title">Recent Visits</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Visitor</th>
+                                <th>Host</th>
+                                <th>Room</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse(\App\Models\Visit::where('tenant_id', $tenant?->id)->with(['visitor', 'hostUser', 'meetingRoom'])->latest()->limit(5)->get() as $visit)
+                            <tr>
+                                <td>{{ $visit->visitor->first_name }} {{ $visit->visitor->last_name }}</td>
+                                <td>{{ $visit->hostUser?->name ?? '-' }}</td>
+                                <td>{{ $visit->meetingRoom?->name ?? '-' }}</td>
+                                <td>{{ $visit->scheduled_start->format('H:i') }}</td>
+                                <td>
+                                    <span class="badge badge-{{ $visit->status === 'checked_in' ? 'success' : ($visit->status === 'pre_registered' ? 'info' : 'warning') }}">
+                                        {{ $visit->status }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="5" style="text-align: center; color: #999;">No visits yet</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
                 </div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Visitor</th>
-                            <th>Host</th>
-                            <th>Room</th>
-                            <th>Time</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @forelse(\App\Models\Visit::where('tenant_id', $tenant?->id)->with(['visitor', 'hostUser', 'meetingRoom'])->latest()->limit(5)->get() as $visit)
-                        <tr>
-                            <td>{{ $visit->visitor->first_name }} {{ $visit->visitor->last_name }}</td>
-                            <td>{{ $visit->hostUser?->name ?? '-' }}</td>
-                            <td>{{ $visit->meetingRoom?->name ?? '-' }}</td>
-                            <td>{{ $visit->scheduled_start->format('H:i') }}</td>
-                            <td>
-                                <span class="badge badge-{{ $visit->status === 'checked_in' ? 'success' : ($visit->status === 'pre_registered' ? 'info' : 'warning') }}">
-                                    {{ $visit->status }}
-                                </span>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr><td colspan="5" style="text-align: center; color: #999;">No visits yet</td></tr>
-                        @endforelse
-                    </tbody>
-                </table>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Peak Visitor Hours (Last 30 Days)</div>
+                    </div>
+                    @if(empty($stats['peak_hours']))
+                        <div style="text-align: center; color: #999; padding: 2rem 0;">No visit data available yet</div>
+                    @else
+                        <div style="display: flex; align-items: flex-end; height: 200px; gap: 4px; padding-top: 20px; border-bottom: 1px solid #e5e5e5;">
+                            @php
+                                $maxCount = max((array)$stats['peak_hours'] ?: [1]);
+                                $maxCount = $maxCount > 0 ? $maxCount : 1; // Prevent division by zero
+                            @endphp
+                            @foreach($stats['peak_hours'] as $hour => $count)
+                                <div style="flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%;">
+                                    <div style="width: 100%; text-align: center; font-size: 10px; color: #666; margin-bottom: 4px; display: {{ $count > 0 ? 'block' : 'none' }};">{{ $count }}</div>
+                                    <div style="width: 80%; background: #1a1a1a; border-radius: 4px 4px 0 0; min-height: 1px; height: {{ ($count / $maxCount) * 100 }}%"></div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div style="display: flex; gap: 4px; margin-top: 8px;">
+                            @foreach($stats['peak_hours'] as $hour => $count)
+                                <div style="flex: 1; text-align: center; font-size: 11px; color: #666;">
+                                    {{ explode(':', $hour)[0] }}h
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+            
+            <!-- Rooms Tab -->
+            <div x-show="tab === 'rooms'">
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <div class="card-title">{{ $isEditingRoom ? 'Edit Room' : 'Add New Room' }}</div>
+                        @if($isEditingRoom)
+                            <button type="button" class="btn btn-secondary" wire:click="resetRoomForm">Cancel</button>
+                        @endif
+                    </div>
+                    <form wire:submit.prevent="saveRoom">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Building</label>
+                                <select wire:model="room_building_id">
+                                    <option value="">Select Building</option>
+                                    @foreach($buildings as $building)
+                                        <option value="{{ $building->id }}">{{ $building->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" wire:model="room_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Capacity</label>
+                                <input type="number" wire:model="room_capacity" min="1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Floor (Optional)</label>
+                                <input type="text" wire:model="room_floor">
+                            </div>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" wire:model="room_is_active" style="width: auto;">
+                                    <span>Active (Available for booking)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">{{ $isEditingRoom ? 'Update Room' : 'Add Room' }}</button>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Manage Rooms</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Building</th>
+                                <th>Capacity</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($rooms as $room)
+                            <tr>
+                                <td>{{ $room->name }}</td>
+                                <td>{{ $room->building?->name ?? 'N/A' }}</td>
+                                <td>{{ $room->capacity }}</td>
+                                <td>
+                                    <span class="badge badge-{{ $room->is_active ? 'success' : 'warning' }}">
+                                        {{ $room->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" wire:click="editRoom({{ $room->id }})">Edit</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; color: #dc2626;" wire:click="deleteRoom({{ $room->id }})" onsubmit="return confirm('Are you sure?')">Delete</button>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="5" style="text-align: center; color: #999;">No meeting rooms found</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Buildings Tab -->
+            <div x-show="tab === 'buildings'">
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <div class="card-title">{{ $isEditingBuilding ? 'Edit Building' : 'Add New Building' }}</div>
+                        @if($isEditingBuilding)
+                            <button type="button" class="btn btn-secondary" wire:click="resetBuildingForm">Cancel</button>
+                        @endif
+                    </div>
+                    <form wire:submit.prevent="saveBuilding">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Building Name</label>
+                                <input type="text" wire:model="building_name" required>
+                            </div>
+                            <div class="form-group full">
+                                <label>Address Details (Optional)</label>
+                                <textarea wire:model="building_address" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">{{ $isEditingBuilding ? 'Update Building' : 'Add Building' }}</button>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Manage Buildings</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Address</th>
+                                <th>Meeting Rooms</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($buildings as $building)
+                            <tr>
+                                <td>{{ $building->name }}</td>
+                                <td>{{ Str::limit($building->address, 50) ?? '-' }}</td>
+                                <td>{{ $building->meetingRooms()->count() }}</td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" wire:click="editBuilding({{ $building->id }})">Edit</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; color: #dc2626;" wire:click="deleteBuilding({{ $building->id }})" onsubmit="return confirm('Are you sure?')">Delete</button>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="4" style="text-align: center; color: #999;">No buildings found</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- SubTenants Tab -->
+            <div x-show="tab === 'subtenants'">
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <div class="card-title">{{ $isEditingSubTenant ? 'Edit Sub-Tenant / Dept' : 'Add New Sub-Tenant / Dept' }}</div>
+                        @if($isEditingSubTenant)
+                            <button type="button" class="btn btn-secondary" wire:click="resetSubTenantForm">Cancel</button>
+                        @endif
+                    </div>
+                    <form wire:submit.prevent="saveSubTenant">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Name</label>
+                                <input type="text" wire:model="subtenant_name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Slug (URL identifier)</label>
+                                <input type="text" wire:model="subtenant_slug" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Contact Person</label>
+                                <input type="text" wire:model="subtenant_contact_person">
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" wire:model="subtenant_email">
+                            </div>
+                            <div class="form-group">
+                                <label>Phone</label>
+                                <input type="tel" wire:model="subtenant_phone">
+                            </div>
+                            <div class="form-group">
+                                <label style="display: flex; align-items: center; gap: 8px;">
+                                    <input type="checkbox" wire:model="subtenant_is_active" style="width: auto;">
+                                    <span>Active</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">{{ $isEditingSubTenant ? 'Update Sub-Tenant' : 'Add Sub-Tenant' }}</button>
+                    </form>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Manage Sub-Tenants</div>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Slug</th>
+                                <th>Contact</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse($subtenants as $sub)
+                            <tr>
+                                <td>{{ $sub->name }}</td>
+                                <td>{{ $sub->slug }}</td>
+                                <td>{{ $sub->email }}</td>
+                                <td>
+                                    <span class="badge badge-{{ $sub->is_active ? 'success' : 'warning' }}">
+                                        {{ $sub->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem;" wire:click="editSubTenant({{ $sub->id }})">Edit</button>
+                                    <button class="btn btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.75rem; color: #dc2626;" wire:click="deleteSubTenant({{ $sub->id }})" onsubmit="return confirm('Are you sure?')">Delete</button>
+                                </td>
+                            </tr>
+                            @empty
+                            <tr><td colspan="5" style="text-align: center; color: #999;">No sub-tenants found</td></tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
             <!-- Settings Tab -->
@@ -150,8 +390,23 @@
                 <div class="card-header">
                     <div class="card-title">Tenant Settings</div>
                 </div>
+                @if(session()->has('message'))
+                    <div style="background: #dcfce7; color: #166534; padding: 1rem; border-radius: 6px; margin-bottom: 1.5rem;">
+                        {{ session('message') }}
+                    </div>
+                @endif
                 <form wire:submit.prevent="saveSettings">
                     <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Company Logo</label>
+                            @if ($tenant?->logo_path)
+                                <div style="margin-bottom: 10px;">
+                                    <img src="{{ Storage::url($tenant->logo_path) }}" alt="Logo" style="max-height: 50px;">
+                                </div>
+                            @endif
+                            <input type="file" wire:model="logo" accept="image/*">
+                            @error('logo') <span style="color: red; font-size: 0.75rem;">{{ $message }}</span> @enderror
+                        </div>
                         <div class="form-group">
                             <label>Company Name</label>
                             <input type="text" wire:model="name">
@@ -198,5 +453,4 @@
             </div>
         </div>
     </div>
-</body>
-</html>
+</div>

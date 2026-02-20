@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kiosk Check-In</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; display: flex; flex-direction: column; }
@@ -46,6 +45,6 @@
     </style>
 </head>
 <body>
-    @livewire('kiosk-check-in', ['tenantId' => $tenant?->id])
+    @livewire('kiosk.check-in', ['tenantId' => $tenant?->id])
 </body>
 </html>

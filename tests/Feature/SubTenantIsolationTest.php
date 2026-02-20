@@ -2,37 +2,59 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\Tenant;
+use App\Models\SubTenant;
 use App\Models\User;
+use App\Models\Visit;
 use App\Models\Visitor;
+use App\Models\Building;
+use App\Models\MeetingRoom;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use PHPUnit\Framework\Attributes\Test;
-use Illuminate\Support\Facades\Auth;
+use Tests\TestCase;
+use Spatie\Permission\Models\Role;
 
 class SubTenantIsolationTest extends TestCase
 {
     use RefreshDatabase;
 
-    #[Test]
-    public function sub_tenant_manager_only_sees_their_data()
+    public function test_tenant_admin_cannot_access_other_tenant_visits()
     {
-        $tenantA = Tenant::create(['name' => 'Tenant A', 'slug' => 'a']);
-        $visitorA = Visitor::create(['tenant_id' => $tenantA->id, 'first_name' => 'A', 'last_name' => 'Visitor', 'email' => 'a@example.com']);
-        $userA = User::create(['tenant_id' => $tenantA->id, 'name' => 'User A', 'email' => 'a@example.com', 'password' => bcrypt('password')]);
-        
-        $tenantB = Tenant::create(['name' => 'Tenant B', 'slug' => 'b']);
-        $visitorB = Visitor::create(['tenant_id' => $tenantB->id, 'first_name' => 'B', 'last_name' => 'Visitor', 'email' => 'b@example.com']);
-        $userB = User::create(['tenant_id' => $tenantB->id, 'name' => 'User B', 'email' => 'b@example.com', 'password' => bcrypt('password')]);
+        // Tenant A
+        $tenantA = Tenant::factory()->create();
+        $userA = User::factory()->create(['tenant_id' => $tenantA->id]);
+        $roleA = Role::firstOrCreate(['name' => 'tenant_admin']);
+        $userA->assignRole($roleA);
 
-        // Log in as User B
-        $this->actingAs($userB);
+        $visitorA = Visitor::factory()->create(['tenant_id' => $tenantA->id]);
+        $buildingA = Building::factory()->create(['tenant_id' => $tenantA->id]);
+        $roomA = MeetingRoom::factory()->create(['building_id' => $buildingA->id]);
+
+        $visitA = Visit::factory()->create([
+            'tenant_id' => $tenantA->id,
+            'visitor_id' => $visitorA->id,
+            'meeting_room_id' => $roomA->id,
+        ]);
+
+        // Tenant B
+        $tenantB = Tenant::factory()->create();
+        $visitorB = Visitor::factory()->create(['tenant_id' => $tenantB->id]);
+        $buildingB = Building::factory()->create(['tenant_id' => $tenantB->id]);
+        $roomB = MeetingRoom::factory()->create(['building_id' => $buildingB->id]);
+
+        $visitB = Visit::factory()->create([
+            'tenant_id' => $tenantB->id,
+            'visitor_id' => $visitorB->id,
+            'meeting_room_id' => $roomB->id,
+        ]);
+
+        // Act As Tenant A Admin
+        $response = $this->actingAs($userA)->getJson('/api/v1/visits/' . $visitB->id);
         
-        // Check isolation via API
-        $response = $this->getJson('/api/v1/visitors');
+        // Assert they cannot see Tenant B's visit
+        $response->assertStatus(403);
         
-        $response->assertStatus(200);
-        $this->assertCount(1, $response->json('data'));
-        $this->assertEquals('B', $response->json('data.0.first_name'));
+        // Assert they CAN see their own visit
+        $responseOwn = $this->actingAs($userA)->getJson('/api/v1/visits/' . $visitA->id);
+        $responseOwn->assertStatus(200);
     }
 }
