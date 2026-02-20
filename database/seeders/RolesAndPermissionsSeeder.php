@@ -2,41 +2,71 @@
 
 namespace Database\Seeders;
 
+use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
-    public function run()
+    /**
+     * Run the database seeds.
+     */
+    public function run(): void
     {
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         // create permissions
         $permissions = [
-            'manage-tenants',
-            'manage-users',
-            'manage-visitors',
-            'check-in-visitors',
+            'manage tenants',
+            'view tenants',
+            'manage users',
+            'view users',
+            'manage buildings',
+            'view buildings',
+            'manage meeting_rooms',
+            'view meeting_rooms',
+            'manage visits',
+            'view visits',
+            'manage visitors',
+            'view visitors',
+            'manage settings',
         ];
 
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // create roles and assign created permissions
+        
+        // Super Admin: Has all permissions everywhere
+        $role = Role::firstOrCreate(['name' => 'super_admin'])
+            ->givePermissionTo(Permission::all());
 
-        $role = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
-        $role->givePermissionTo(Permission::all());
+        // Admin: Similar to super admin but maybe restricted in some global actions? For now all.
+        $role = Role::firstOrCreate(['name' => 'admin'])
+            ->givePermissionTo(Permission::all());
 
-        $role = Role::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-        $role->givePermissionTo(['manage-users', 'manage-visitors', 'check-in-visitors']);
+        // Tenant Admin: Manages their own tenant resources
+        $role = Role::firstOrCreate(['name' => 'tenant_admin'])
+            ->givePermissionTo([
+                'manage users', 'view users',
+                'manage buildings', 'view buildings',
+                'manage meeting_rooms', 'view meeting_rooms',
+                'manage visits', 'view visits',
+                'manage visitors', 'view visitors',
+                'manage settings',
+            ]);
 
-        $role = Role::firstOrCreate(['name' => 'receptionist', 'guard_name' => 'web']);
-        $role->givePermissionTo(['check-in-visitors', 'manage-visitors']);
-
-        $role = Role::firstOrCreate(['name' => 'employee', 'guard_name' => 'web']);
-        // employees might have basic permissions or none by default
+        // Standard User: Basic access within a tenant
+        $role = Role::firstOrCreate(['name' => 'user'])
+            ->givePermissionTo([
+                'view buildings',
+                'view meeting_rooms',
+                'manage visits', 'view visits',
+                'manage visitors', 'view visitors',
+            ]);
     }
 }

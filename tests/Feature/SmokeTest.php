@@ -49,36 +49,27 @@ class SmokeTest extends TestCase
         }
     }
 
-    public function test_sub_tenants_route_renders_for_hub_admin()
+    public function test_sub_tenants_api_route_renders()
     {
-        $tenant = Tenant::factory()->create(['is_hub' => true]);
-        $user = User::factory()->create(['tenant_id' => $tenant->id]);
-        $user->assignRole('admin'); // Admin role has manage-tenants permission? No, wait. 
+        $tenant = Tenant::factory()->create();
+        $user = User::factory()->create(['tenant_id' => $tenant->id, 'role' => 'tenant_admin']);
 
-        // Check Seeder: 'admin' has 'manage-users', 'manage-visitors', 'check-in-visitors'.
-        // Route middleware: 'role:admin|receptionist'.
-        // So admin should be able to access it.
-        // Controller check: $user->tenant->is_hub must be true.
-
-        $response = $this->actingAs($user)->get('/sub-tenants');
+        // Check if API route is accessible
+        $response = $this->actingAs($user)->getJson('/api/v1/sub-tenants');
         $response->assertStatus(200);
     }
 
-    public function test_superadmin_routes_render_for_superadmin()
+    public function test_superadmin_api_routes_render_for_superadmin()
     {
         $tenant = Tenant::factory()->create();
-        $user = User::factory()->create(['tenant_id' => $tenant->id, 'is_super_admin' => true]);
-        $user->assignRole('super-admin');
+        $user = User::factory()->create(['tenant_id' => $tenant->id, 'role' => 'super_admin']);
 
-        // Main dashboard
-        $this->actingAs($user)->get('/superadmin')->assertStatus(200);
-        
         // Tenants list
-        $this->actingAs($user)->get('/superadmin/tenants')->assertStatus(200);
+        $this->actingAs($user)->getJson('/api/v1/tenants')->assertStatus(200);
 
         // Tenant detail
         $targetTenant = Tenant::factory()->create();
-        $this->actingAs($user)->get("/superadmin/tenants/{$targetTenant->id}")->assertStatus(200);
+        $this->actingAs($user)->getJson("/api/v1/tenants/{$targetTenant->id}")->assertStatus(200);
     }
 
     public function test_kiosk_routes_render()

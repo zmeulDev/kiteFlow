@@ -28,8 +28,11 @@ class SubTenantIsolationTest extends TestCase
         // Log in as User B
         $this->actingAs($userB);
         
-        // Check isolation
-        $this->assertEquals(1, Visitor::count(), "User B should only see 1 visitor");
-        $this->assertEquals('B', Visitor::first()->first_name);
+        // Check isolation via API
+        $response = $this->getJson('/api/v1/visitors');
+        
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json('data'));
+        $this->assertEquals('B', $response->json('data.0.first_name'));
     }
 }

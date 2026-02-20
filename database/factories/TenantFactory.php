@@ -4,21 +4,24 @@ namespace Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 
+/**
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\Tenant>
+ */
 class TenantFactory extends Factory
 {
-    /**
-     * Define the model's default state.
-     *
-     * @return array<string, mixed>
-     */
     public function definition(): array
     {
         return [
-            'name' => $this->faker->company(),
-            'slug' => $this->faker->unique()->slug(),
-            'contact_name' => $this->faker->name(),
-            'contact_email' => $this->faker->companyEmail(),
-            'is_hub' => false,
+            'name' => fake()->company(),
+            'slug' => fake()->unique()->slug(),
+            'address' => fake()->address(),
+            'city' => fake()->city(),
+            'country' => fake()->country(),
+            'phone' => fake()->phoneNumber(),
+            'email' => fake()->companyEmail(),
+            'contact_person' => fake()->name(),
+            'gdpr_retention_months' => 6,
+            'is_active' => true,
         ];
     }
 }

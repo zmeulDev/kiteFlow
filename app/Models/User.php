@@ -2,65 +2,30 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-use App\Models\Scopes\TenantScope;
-use Illuminate\Database\Eloquent\Attributes\ScopedBy;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-
-#[ScopedBy([TenantScope::class])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles;
+    use HasFactory, Notifiable, HasRoles, HasApiTokens, SoftDeletes;
 
-    public function canAccessSuperAdmin(): bool
-    {
-        return $this->is_super_admin;
-    }
+    protected $fillable = ['tenant_id', 'sub_tenant_id', 'name', 'email', 'password', 'role', 'is_active'];
+    protected $hidden = ['password', 'remember_token'];
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    protected $fillable = [
-        'tenant_id',
-        'name',
-        'email',
-        'password',
-    ];
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
-    }
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-            'is_super_admin' => 'boolean',
-        ];
+        return ['email_verified_at' => 'datetime', 'password' => 'hashed', 'is_active' => 'boolean'];
     }
+
+    public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+    public function subTenant(): BelongsTo { return $this->belongsTo(SubTenant::class, 'sub_tenant_id'); }
+    public function hostedVisits(): HasMany { return $this->hasMany(Visit::class, 'host_user_id'); }
+    public function isSuperAdmin(): bool { return $this->role === 'super_admin'; }
+    public function isTenantAdmin(): bool { return in_array($this->role, ['admin', 'tenant_admin']); }
 }

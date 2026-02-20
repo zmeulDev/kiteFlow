@@ -2,96 +2,42 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Laravel\Cashier\Billable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Tenant extends Model
+class Tenant extends \Illuminate\Database\Eloquent\Model
 {
-    use HasFactory, Billable;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'parent_id',
-        'name', 
-        'is_hub',
-        'contact_name', 
-        'contact_email', 
-        'contact_phone',
-        'billing_address',
-        'vat_id',
-        'contract_notes',
-        'monthly_rate',
-        'slug', 
-        'settings', 
-        'logo_path', 
-        'plan', 
-        'status', 
-        'trial_ends_at', 
-        'subscription_ends_at'
+        'name',
+        'slug',
+        'logo_path',
+        'address',
+        'city',
+        'country',
+        'phone',
+        'email',
+        'contact_person',
+        'gdpr_retention_months',
+        'nda_text',
+        'terms_text',
+        'is_active',
     ];
 
-    protected $casts = [
-        'is_hub' => 'boolean',
-        'settings' => 'array',
-        'trial_ends_at' => 'datetime',
-        'subscription_ends_at' => 'datetime',
-        'monthly_rate' => 'decimal:2',
-    ];
-
-    protected static function boot()
+    protected function casts(): array
     {
-        parent::boot();
-
-        static::deleting(function ($tenant) {
-            // Cascade delete related records via Eloquent to trigger child events
-            $tenant->users->each->delete();
-            $tenant->locations->each->delete();
-            $tenant->visitors->each->delete();
-            
-            // Note: meetingRooms, visits, and bookings are handled by cascading 
-            // deletes in Location and Visitor models.
-        });
+        return [
+            'is_active' => 'boolean',
+            'gdpr_retention_months' => 'integer',
+        ];
     }
 
-    /**
-     * Check if the tenant has reached their visitor limit for the current month.
-     */
-    public function hasReachedLimit(): bool
+    public function subTenants(): HasMany
     {
-        if ($this->plan === 'pro' || $this->plan === 'enterprise') {
-            return false;
-        }
-
-        // Default 'free' limit: 50 visitors
-        $limit = 50;
-        $count = $this->visits()
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
-            ->count();
-
-        return $count >= $limit;
-    }
-
-    public function parent(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class, 'parent_id');
-    }
-
-    public function children(): HasMany
-    {
-        return $this->hasMany(Tenant::class, 'parent_id');
-    }
-
-    public function visitors(): HasMany
-    {
-        return $this->hasMany(Visitor::class);
-    }
-
-    public function visits(): HasMany
-    {
-        return $this->hasMany(Visit::class);
+        return $this->hasMany(SubTenant::class);
     }
 
     public function users(): HasMany
@@ -99,9 +45,9 @@ class Tenant extends Model
         return $this->hasMany(User::class);
     }
 
-    public function locations(): HasMany
+    public function buildings(): HasMany
     {
-        return $this->hasMany(Location::class);
+        return $this->hasMany(Building::class);
     }
 
     public function meetingRooms(): HasMany
@@ -109,14 +55,31 @@ class Tenant extends Model
         return $this->hasMany(MeetingRoom::class);
     }
 
-    public function bookings(): HasMany
+    public function visits(): HasMany
     {
-        return $this->hasMany(Booking::class);
+        return $this->hasMany(Visit::class);
     }
 
-    public function getLogoUrlAttribute(): string
+    public function visitors(): HasMany
     {
-        return $this->logo_path ? asset('storage/' . $this->logo_path) : 'https://ui-avatars.com/api/?name=' . urlencode($this->name) . '&color=4f46e5&background=f8faff';
+        return $this->hasMany(Visitor::class);
+    }
+
+    public function settings(): HasMany
+    {
+        return $this->hasMany(Setting::class);
+    }
+
+    public function getSetting(string $key, mixed $default = null): mixed
+    {
+        return $this->settings()->where('key', $key)->first()?->value ?? $default;
+    }
+
+    public function setSetting(string $key, mixed $value): Setting
+    {
+        return $this->settings()->updateOrCreate(
+            ['key' => $key],
+            ['value' => $value]
+        );
     }
 }
-

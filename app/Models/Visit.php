@@ -2,67 +2,59 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Models\Scopes\TenantScope;
-use Illuminate\Database\Eloquent\Attributes\ScopedBy;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[ScopedBy([TenantScope::class])]
-class Visit extends Model
+class Visit extends \Illuminate\Database\Eloquent\Model
 {
-    protected $fillable = [
-        'tenant_id', 
-        'location_id',
-        'check_in_token',
-        'visitor_id', 
-        'user_id', 
-        'purpose', 
-        'signature_data', 
-        'photo_path',
-        'scheduled_at',
-        'signed_at', 
-        'checked_in_at', 
-        'checked_out_at'
-    ];
+    use HasFactory, SoftDeletes;
 
-    protected $casts = [
-        'scheduled_at' => 'datetime',
-        'signed_at' => 'datetime',
-        'checked_in_at' => 'datetime',
-        'checked_out_at' => 'datetime',
-    ];
+    protected $fillable = ['visitor_id', 'tenant_id', 'sub_tenant_id', 'host_user_id', 'meeting_room_id', 'building_id', 'visit_code', 'qr_code_path', 'scheduled_start', 'scheduled_end', 'purpose', 'status', 'checked_in_at', 'checked_out_at', 'notes'];
 
-    public function tenant(): BelongsTo
+    protected function casts(): array
     {
-        return $this->belongsTo(Tenant::class);
+        return ['scheduled_start' => 'datetime', 'scheduled_end' => 'datetime', 'checked_in_at' => 'datetime', 'checked_out_at' => 'datetime', 'status' => 'string'];
     }
 
-    public function location(): BelongsTo
+    public function visitor(): BelongsTo { return $this->belongsTo(Visitor::class); }
+    public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+    public function subTenant(): BelongsTo { return $this->belongsTo(SubTenant::class); }
+    public function hostUser(): BelongsTo { return $this->belongsTo(User::class, 'host_user_id'); }
+    public function meetingRoom(): BelongsTo { return $this->belongsTo(MeetingRoom::class); }
+    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
+    public function latestCheckIn(): HasOne { return $this->hasOne(CheckIn::class)->latestOfMany(); }
+    public function activeCheckIn(): HasOne { return $this->hasOne(CheckIn::class)->whereNull('check_out_time'); }
+    public function checkIns(): HasMany { return $this->hasMany(CheckIn::class); }
+
+    public function doCheckIn(User $checkedInBy, ?int $roomId = null, string $method = 'manual'): CheckIn
     {
-        return $this->belongsTo(Location::class);
+        $this->update(['status' => 'checked_in', 'checked_in_at' => now()]);
+        return CheckIn::create([
+            'visit_id' => $this->id,
+            'visitor_id' => $this->visitor_id,
+            'meeting_room_id' => $roomId ?? $this->meeting_room_id,
+            'checked_in_by' => $checkedInBy->id,
+            'check_in_time' => now(),
+            'check_in_method' => $method,
+        ]);
     }
 
-    public function visitor(): BelongsTo
+    public function doCheckOut(User $checkedOutBy, string $method = 'manual'): void
     {
-        return $this->belongsTo(Visitor::class);
+        $this->update(['status' => 'checked_out', 'checked_out_at' => now()]);
+        $this->activeCheckIn?->update(['checked_out_by' => $checkedOutBy->id, 'check_out_time' => now(), 'check_out_method' => $method]);
     }
 
-    public function host(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'user_id');
-    }
+    public function cancel(): void { $this->update(['status' => 'cancelled']); }
+    public function markNoShow(): void { $this->update(['status' => 'no_show']); }
 
-    public function booking(): \Illuminate\Database\Eloquent\Relations\HasOne
+    public static function generateVisitCode(): string
     {
-        return $this->hasOne(Booking::class);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::deleting(function ($visit) {
-            $visit->booking?->delete();
-        });
+        do { $code = strtoupper(Str::random(8)); } while (self::where('visit_code', $code)->exists());
+        return $code;
     }
 }

@@ -2,43 +2,25 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Models\Scopes\TenantScope;
-use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 
-#[ScopedBy([TenantScope::class])]
-class MeetingRoom extends Model
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class MeetingRoom extends \Illuminate\Database\Eloquent\Model
 {
-    protected $fillable = ['tenant_id', 'location_id', 'name', 'capacity', 'amenities', 'is_active'];
+    use HasFactory, SoftDeletes;
 
-    protected $casts = [
-        'amenities' => 'array',
-        'is_active' => 'boolean',
-    ];
+    protected $fillable = ['building_id', 'tenant_id', 'name', 'capacity', 'amenities', 'floor', 'floor_plan_path', 'is_active'];
 
-    public function tenant(): BelongsTo
+    protected function casts(): array
     {
-        return $this->belongsTo(Tenant::class);
+        return ['amenities' => 'array', 'is_active' => 'boolean', 'capacity' => 'integer'];
     }
 
-    public function location(): BelongsTo
-    {
-        return $this->belongsTo(Location::class);
-    }
-
-    public function bookings(): HasMany
-    {
-        return $this->hasMany(Booking::class);
-    }
-
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::deleting(function ($meetingRoom) {
-            $meetingRoom->bookings->each->delete();
-        });
-    }
+    public function building(): BelongsTo { return $this->belongsTo(Building::class); }
+    public function tenant(): BelongsTo { return $this->belongsTo(Tenant::class); }
+    public function visits(): HasMany { return $this->hasMany(Visit::class); }
+    public function checkIns(): HasMany { return $this->hasMany(CheckIn::class); }
 }
