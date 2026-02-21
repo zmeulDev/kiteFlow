@@ -1,252 +1,287 @@
 <?php
 
-use function Livewire\Volt\{state, mount, layout};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
 use App\Models\Tenant;
 use App\Models\TenantContact;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Validation\Rule;
 
-layout('components.layouts.app');
-
-state([
-    'tenant' => null, 
-    'subscriptionTier' => 'Hobby', 
-    'subTenants' => [],
-    'contacts' => [],
+new #[Layout('components.layouts.app')] class extends Component {
+    public ?Tenant $tenant = null;
+    public string $subscriptionTier = 'Hobby';
+    public $subTenants = [];
+    public $contacts = [];
     
     // Contract Modal State
-    'showContractModal' => false,
-    'editStartDate' => '',
-    'editEndDate' => '',
+    public bool $showContractModal = false;
+    public string $editStartDate = '';
+    public string $editEndDate = '';
     
     // Contact Modal State
-    'showContactModal' => false,
-    'editingContactId' => null,
-    'contactName' => '',
-    'contactEmail' => '',
-    'contactPhone' => '',
-    'contactIsMain' => false,
+    public bool $showContactModal = false;
+    public ?int $editingContactId = null;
+    public string $contactName = '';
+    public string $contactEmail = '';
+    public string $contactPhone = '';
+    public bool $contactIsMain = false;
 
     // User Edit Modal State
-    'tenantUsers' => [],
-    'roles' => [],
-    'showEditUserModal' => false,
-    'editingUserId' => null,
-    'editUserData' => ['name' => '', 'email' => '', 'role' => '', 'is_active' => true],
-]);
+    public $tenantUsers = [];
+    public $roles = [];
+    public bool $showEditUserModal = false;
+    public ?int $editingUserId = null;
+    public array $editUserData = ['name' => '', 'email' => '', 'role' => '', 'is_active' => true];
 
-mount(function (Tenant $tenant) {
-    if ($tenant->parent_id !== null) {
-        abort(404, 'Cannot view detail page for a sub-tenant.');
+    // Unified Confirmation State
+    public bool $showConfirmModal = false;
+    public string $confirmActionType = '';
+    public ?int $confirmId = null;
+    public string $confirmMessage = '';
+
+    public function mount(Tenant $tenant) {
+        if ($tenant->parent_id !== null) {
+            abort(404, 'Cannot view detail page for a sub-tenant.');
+        }
+
+        $this->tenant = $tenant;
+        
+        if ($tenant->subscribed('default')) {
+            $this->subscriptionTier = 'Enterprise (Active)';
+        } else {
+            $this->subscriptionTier = 'Hobby // Grace Period';
+        }
+
+        $this->subTenants = $tenant->subTenants()->withCount('users')->get();
+        $this->roles = Role::where('name', '!=', 'SuperAdmin')->get();
+        $this->loadContacts();
+        $this->loadUsers();
     }
 
-    $this->tenant = $tenant;
-    
-    if ($tenant->subscribed('default')) {
-        $this->subscriptionTier = 'Enterprise (Active)';
-    } else {
-        $this->subscriptionTier = 'Hobby // Grace Period';
+    public function loadUsers() {
+        $this->tenantUsers = User::where('tenant_id', $this->tenant->id)->with('allTenantRoles')->get();
     }
 
-    $this->subTenants = $tenant->subTenants()->withCount('users')->get();
-    $this->roles = Role::where('name', '!=', 'SuperAdmin')->get();
-    $this->loadContacts();
-    $this->loadUsers();
-});
-
-$loadUsers = function() {
-    $this->tenantUsers = User::where('tenant_id', $this->tenant->id)->with('allTenantRoles')->get();
-};
-
-$loadContacts = function() {
-    $this->contacts = $this->tenant->contacts()->orderByDesc('is_main')->get();
-};
-
-$openContractModal = function() {
-    $this->editStartDate = $this->tenant->contract_start_date ? $this->tenant->contract_start_date->format('Y-m-d') : '';
-    $this->editEndDate = $this->tenant->contract_end_date ? $this->tenant->contract_end_date->format('Y-m-d') : '';
-    $this->showContractModal = true;
-};
-
-$closeContractModal = function() {
-    $this->showContractModal = false;
-};
-
-$updateContractDetails = function() {
-    $this->validate([
-        'editStartDate' => 'nullable|date',
-        'editEndDate' => 'nullable|date|after_or_equal:editStartDate',
-    ]);
-
-    $this->tenant->update([
-        'contract_start_date' => $this->editStartDate ?: null,
-        'contract_end_date' => $this->editEndDate ?: null,
-    ]);
-
-    $this->showContractModal = false;
-    session()->flash('message', 'Contract details updated.');
-};
-
-$openContactModal = function($contactId = null) {
-    $this->resetValidation();
-    if ($contactId) {
-        $contact = TenantContact::findOrFail($contactId);
-        $this->editingContactId = $contact->id;
-        $this->contactName = $contact->name;
-        $this->contactEmail = $contact->email;
-        $this->contactPhone = $contact->phone;
-        $this->contactIsMain = $contact->is_main;
-    } else {
-        $this->editingContactId = null;
-        $this->contactName = '';
-        $this->contactEmail = '';
-        $this->contactPhone = '';
-        $this->contactIsMain = false;
+    public function loadContacts() {
+        $this->contacts = $this->tenant->contacts()->orderByDesc('is_main')->get();
     }
-    $this->showContactModal = true;
-};
 
-$closeContactModal = function() {
-    $this->showContactModal = false;
-};
+    public function openContractModal() {
+        $this->editStartDate = $this->tenant->contract_start_date ? $this->tenant->contract_start_date->format('Y-m-d') : '';
+        $this->editEndDate = $this->tenant->contract_end_date ? $this->tenant->contract_end_date->format('Y-m-d') : '';
+        $this->showContractModal = true;
+    }
 
-$saveContact = function() {
-    $this->validate([
-        'contactName' => 'required|string|max:255',
-        'contactEmail' => 'nullable|email|max:255',
-        'contactPhone' => 'nullable|string|max:20',
-        'contactIsMain' => 'boolean',
-    ]);
+    public function closeContractModal() {
+        $this->showContractModal = false;
+    }
 
-    if ($this->contactIsMain) {
+    public function updateContractDetails() {
+        $this->validate([
+            'editStartDate' => 'nullable|date',
+            'editEndDate' => 'nullable|date|after_or_equal:editStartDate',
+        ]);
+
+        $this->tenant->update([
+            'contract_start_date' => $this->editStartDate ?: null,
+            'contract_end_date' => $this->editEndDate ?: null,
+        ]);
+
+        $this->showContractModal = false;
+        session()->flash('message', 'Contract details updated.');
+    }
+
+    public function openContactModal($contactId = null) {
+        $this->resetValidation();
+        if ($contactId) {
+            $contact = TenantContact::findOrFail($contactId);
+            $this->editingContactId = $contact->id;
+            $this->contactName = $contact->name;
+            $this->contactEmail = $contact->email;
+            $this->contactPhone = $contact->phone;
+            $this->contactIsMain = $contact->is_main;
+        } else {
+            $this->editingContactId = null;
+            $this->contactName = '';
+            $this->contactEmail = '';
+            $this->contactPhone = '';
+            $this->contactIsMain = false;
+        }
+        $this->showContactModal = true;
+    }
+
+    public function closeContactModal() {
+        $this->showContactModal = false;
+    }
+
+    public function saveContact() {
+        $this->validate([
+            'contactName' => 'required|string|max:255',
+            'contactEmail' => 'nullable|email|max:255',
+            'contactPhone' => 'nullable|string|max:20',
+            'contactIsMain' => 'boolean',
+        ]);
+
+        if ($this->contactIsMain) {
+            $this->tenant->contacts()->update(['is_main' => false]);
+        }
+
+        if ($this->editingContactId) {
+            $contact = TenantContact::findOrFail($this->editingContactId);
+            $contact->update([
+                'name' => $this->contactName,
+                'email' => $this->contactEmail,
+                'phone' => $this->contactPhone,
+                'is_main' => $this->contactIsMain,
+            ]);
+            session()->flash('message', 'Contact updated.');
+        } else {
+            $this->tenant->contacts()->create([
+                'name' => $this->contactName,
+                'email' => $this->contactEmail,
+                'phone' => $this->contactPhone,
+                'is_main' => $this->contactIsMain,
+            ]);
+            session()->flash('message', 'Contact added.');
+        }
+        
+        $this->loadContacts();
+        $this->showContactModal = false;
+    }
+
+    public function deleteContact($id) {
+        TenantContact::destroy($id);
+        $this->loadContacts();
+        session()->flash('message', 'Contact removed.');
+    }
+
+    public function setMainContact($id) {
         $this->tenant->contacts()->update(['is_main' => false]);
+        TenantContact::where('id', $id)->update(['is_main' => true]);
+        $this->loadContacts();
+        session()->flash('message', 'Main contact updated.');
     }
 
-    if ($this->editingContactId) {
-        $contact = TenantContact::findOrFail($this->editingContactId);
-        $contact->update([
-            'name' => $this->contactName,
-            'email' => $this->contactEmail,
-            'phone' => $this->contactPhone,
-            'is_main' => $this->contactIsMain,
+    public function updateTenantStatus($newStatus) {
+        if (in_array($newStatus, ['Active', 'Suspended', 'Inactive'])) {
+            $this->tenant->update(['status' => $newStatus]);
+            session()->flash('message', "Tenant status updated to {$newStatus}.");
+        }
+    }
+
+    public function deleteTenant() {
+        $this->tenant->delete();
+        session()->flash('message', 'Tenant deleted permanently.');
+        return redirect('/super-admin/dashboard');
+    }
+
+    public function openEditUserModal($id) {
+        $user = User::with('allTenantRoles')->findOrFail($id);
+        $this->editingUserId = $id;
+        $this->editUserData = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->allTenantRoles->first()?->name ?? '',
+            'is_active' => $user->is_active,
+        ];
+        $this->showEditUserModal = true;
+    }
+
+    public function closeEditUserModal() {
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+    }
+
+    public function updateUser() {
+        $this->validate([
+            'editUserData.name' => 'required|string|max:255',
+            'editUserData.email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->editingUserId)],
+            'editUserData.role' => 'required|exists:roles,name',
+            'editUserData.is_active' => 'boolean',
         ]);
-        session()->flash('message', 'Contact updated.');
-    } else {
-        $this->tenant->contacts()->create([
-            'name' => $this->contactName,
-            'email' => $this->contactEmail,
-            'phone' => $this->contactPhone,
-            'is_main' => $this->contactIsMain,
+
+        $user = User::findOrFail($this->editingUserId);
+        $user->update([
+            'name' => $this->editUserData['name'],
+            'email' => $this->editUserData['email'],
+            'is_active' => $this->editUserData['is_active'],
         ]);
-        session()->flash('message', 'Contact added.');
-    }
-    
-    $this->loadContacts();
-    $this->showContactModal = false;
-};
 
-$deleteContact = function($id) {
-    TenantContact::destroy($id);
-    $this->loadContacts();
-    session()->flash('message', 'Contact removed.');
-};
+        setPermissionsTeamId($this->tenant->id);
+        $user->syncRoles([$this->editUserData['role']]);
 
-$setMainContact = function($id) {
-    $this->tenant->contacts()->update(['is_main' => false]);
-    TenantContact::where('id', $id)->update(['is_main' => true]);
-    $this->loadContacts();
-    session()->flash('message', 'Main contact updated.');
-};
-
-$updateTenantStatus = function($newStatus) {
-    if (in_array($newStatus, ['Active', 'Suspended', 'Inactive'])) {
-        $this->tenant->update(['status' => $newStatus]);
-        session()->flash('message', "Tenant status updated to {$newStatus}.");
-    }
-};
-
-$deleteTenant = function() {
-    $this->tenant->delete();
-    session()->flash('message', 'Tenant deleted permanently.');
-    return redirect()->route('super-admin.dashboard');
-};
-
-$openEditUserModal = function($id) {
-    $user = User::with('allTenantRoles')->findOrFail($id);
-    $this->editingUserId = $id;
-    $this->editUserData = [
-        'name' => $user->name,
-        'email' => $user->email,
-        'role' => $user->allTenantRoles->first()?->name ?? '',
-        'is_active' => $user->is_active,
-    ];
-    $this->showEditUserModal = true;
-};
-
-$closeEditUserModal = function() {
-    $this->showEditUserModal = false;
-    $this->editingUserId = null;
-};
-
-$updateUser = function() {
-    $this->validate([
-        'editUserData.name' => 'required|string|max:255',
-        'editUserData.email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->editingUserId)],
-        'editUserData.role' => 'required|exists:roles,name',
-        'editUserData.is_active' => 'boolean',
-    ]);
-
-    $user = User::findOrFail($this->editingUserId);
-    $user->update([
-        'name' => $this->editUserData['name'],
-        'email' => $this->editUserData['email'],
-        'is_active' => $this->editUserData['is_active'],
-    ]);
-
-    // Force team context to sync the role properly within this tenant
-    setPermissionsTeamId($this->tenant->id);
-    $user->syncRoles([$this->editUserData['role']]);
-
-    session()->flash('message', 'User details updated.');
-    $this->showEditUserModal = false;
-    $this->editingUserId = null;
-    $this->loadUsers();
-};
-
-$deleteUser = function($id) {
-    if (auth()->id() === $id) {
-        session()->flash('message', 'You cannot delete yourself.');
-        return;
+        session()->flash('message', 'User details updated.');
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+        $this->loadUsers();
     }
 
-    $user = User::findOrFail($id);
-    $user->delete();
-    session()->flash('message', 'User fully obliterated.');
-    $this->loadUsers();
-};
-
-$resetUserPassword = function($id) {
-    if (auth()->id() === $id) {
-        session()->flash('message', 'You cannot reset your own password here.');
-        return;
+    public function confirmAction(string $actionType, ?int $id, string $message)
+    {
+        $this->confirmActionType = $actionType;
+        $this->confirmId = $id;
+        $this->confirmMessage = $message;
+        $this->showConfirmModal = true;
     }
 
-    $user = User::findOrFail($id);
-    $newPassword = \Illuminate\Support\Str::random(12);
-    
-    $user->update([
-        'password' => \Illuminate\Support\Facades\Hash::make($newPassword),
-    ]);
-    
-    // Close modal if open to show the flash message clearly
-    $this->showEditUserModal = false;
-    $this->editingUserId = null;
-    session()->flash('message', 'Password reset successfully for ' . $user->email . '. New Password: ' . $newPassword);
-    $this->loadUsers();
-};
+    public function executeAction()
+    {
+        if ($this->confirmActionType === 'deleteContact' && $this->confirmId) {
+            $this->deleteContact($this->confirmId);
+        } elseif ($this->confirmActionType === 'deleteUser' && $this->confirmId) {
+            $this->deleteUser($this->confirmId);
+        } elseif ($this->confirmActionType === 'deleteTenant') {
+            $this->deleteTenant();
+        } elseif ($this->confirmActionType === 'resetPassword' && $this->confirmId) {
+            $this->resetUserPassword($this->confirmId);
+        }
 
-$__volt_compiler_fix = true;
+        $this->showConfirmModal = false;
+        $this->confirmActionType = '';
+        $this->confirmId = null;
+        $this->confirmMessage = '';
+    }
+
+    public function closeConfirmModal()
+    {
+        $this->showConfirmModal = false;
+        $this->confirmActionType = '';
+        $this->confirmId = null;
+        $this->confirmMessage = '';
+    }
+
+    public function deleteUser($id) {
+        if (auth()->id() === $id) {
+            session()->flash('message', 'You cannot delete yourself.');
+            return;
+        }
+
+        $user = User::findOrFail($id);
+        $user->delete();
+        session()->flash('message', 'User fully obliterated.');
+        $this->loadUsers();
+    }
+
+    public function resetUserPassword($id) {
+        if (auth()->id() === $id) {
+            session()->flash('message', 'You cannot reset your own password here.');
+            return;
+        }
+
+        $user = User::findOrFail($id);
+        $newPassword = \Illuminate\Support\Str::random(12);
+        
+        $user->update([
+            'password' => \Illuminate\Support\Facades\Hash::make($newPassword),
+        ]);
+        
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+        session()->flash('message', 'Password reset successfully for ' . $user->email . '. New Password: ' . $newPassword);
+        $this->loadUsers();
+    }
+};
 ?>
 
 <div class="min-h-screen bg-[#F4F5F7] p-6 md:p-12">
@@ -377,12 +412,11 @@ $__volt_compiler_fix = true;
                                         @endif
                                     </td>
                                     <td class="p-4 text-right">
-                                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div class="flex items-center justify-end gap-2 transition-opacity">
                                             @if(!$c->is_main)
                                                 <button wire:click="setMainContact({{ $c->id }})" class="text-xs font-bold text-yellow-600 hover:text-yellow-800 bg-yellow-50 hover:bg-yellow-100 px-2 py-1 rounded transition-colors">Make Main</button>
                                             @endif
-                                            <button wire:click="openContactModal({{ $c->id }})" class="text-gray-400 hover:text-indigo-600 transition-colors p-1"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
-                                            <button wire:click="deleteContact({{ $c->id }})" wire:confirm="Remove this contact?" class="text-gray-400 hover:text-red-600 transition-colors p-1"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                                            <button wire:click="confirmAction('deleteContact', {{ $c->id }}, 'Remove this contact?')" class="text-gray-400 hover:text-red-600 transition-colors p-1"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                                         </div>
                                     </td>
                                 </tr>
@@ -481,10 +515,10 @@ $__volt_compiler_fix = true;
                                         {{ $user->created_at->format('M j, Y') }}
                                     </td>
                                     <td class="text-right">
-                                        <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div class="flex items-center justify-end gap-2 transition-opacity">
                                             <button wire:click="openEditUserModal({{ $user->id }})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Edit</button>
                                             @if(auth()->id() !== $user->id)
-                                                <button wire:click="deleteUser({{ $user->id }})" wire:confirm="Permanently obliterate this user account?" class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Delete</button>
+                                                <button wire:click="confirmAction('deleteUser', {{ $user->id }}, 'Permanently obliterate this user account?')" class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Delete</button>
                                             @endif
                                         </div>
                                     </td>
@@ -504,7 +538,7 @@ $__volt_compiler_fix = true;
         <div class="mt-12 p-6 border border-red-200 bg-red-50/30 rounded-[24px]">
             <h3 class="text-lg font-extrabold text-red-900 mb-2">Danger Zone</h3>
             <p class="text-sm text-red-700 mb-4">Deleting a tenant environment is a non-reversible action that will permanently destroy all associated sub-tenants, user identities, contacts, and configuration data.</p>
-            <button wire:click="deleteTenant" wire:confirm="Are you absolutely sure you want to permanently obliterate this Tenant and all its data?" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors border border-red-700 border-b-red-800">
+            <button wire:click="confirmAction('deleteTenant', {{ $tenant->id }}, 'Are you absolutely sure you want to permanently obliterate this Tenant and all its data?')" class="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-xl shadow-sm transition-colors border border-red-700 border-b-red-800">
                 Permanently Delete {{ $tenant->name }}
             </button>
         </div>
@@ -634,7 +668,7 @@ $__volt_compiler_fix = true;
                     <div class="flex items-center justify-between pt-4 border-t border-gray-100">
                         <div>
                             @if(auth()->id() !== $editingUserId)
-                                <button type="button" wire:click="resetUserPassword({{ $editingUserId }})" wire:confirm="Are you sure you want to forcibly reset this user's password? They will be locked out until you provide the new one." class="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">Force Reset Password</button>
+                                <button type="button" wire:click="confirmAction('resetPassword', {{ $editingUserId }}, 'Are you sure you want to forcibly reset this user\'s password? They will be locked out until you provide the new one.')" class="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">Force Reset Password</button>
                             @endif
                         </div>
                         <div class="flex items-center gap-3">
@@ -643,6 +677,25 @@ $__volt_compiler_fix = true;
                         </div>
                     </div>
                 </form>
+            </div>
+        </div>
+    @endif
+
+    <!-- Global Action Confirmation Modal -->
+    @if($showConfirmModal)
+        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showConfirmModal', false)" style="animation: fade-in-up 0.3s ease-out forwards;">
+            <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100 m-4 relative" wire:click.stop>
+                <div class="p-8 text-center">
+                    <div class="w-16 h-16 bg-[#FF4B4B]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-[#FF4B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h3 class="text-2xl font-extrabold text-gray-900 mb-2">Are you certain?</h3>
+                    <p class="text-sm text-gray-500 mb-8">{{ $confirmMessage }}</p>
+                    <div class="flex items-center justify-center gap-3">
+                        <button type="button" wire:click="closeConfirmModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl transition-colors mb-0">Cancel</button>
+                        <button type="button" wire:click="executeAction" class="px-5 py-2.5 text-sm font-bold text-white bg-[#FF4B4B] hover:bg-red-600 shadow-md hover:shadow-lg rounded-xl transition-all mb-0">Yes, Proceed</button>
+                    </div>
+                </div>
             </div>
         </div>
     @endif

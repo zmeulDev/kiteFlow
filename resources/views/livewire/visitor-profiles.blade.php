@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Storage;
 
 layout('components.layouts.app');
 
-state(['tenant' => null, 'visitors' => [], 'search' => '', 'selectedVisitor' => null, 'host_id' => null, 'room_id' => null, 'scheduled_at' => '', 'showNewVisitorForm' => false, 'newVisitorName' => '', 'newVisitorEmail' => '', 'newVisitorPhone' => '', 'editingVisitorId' => null, 'editVisitorName' => '', 'editVisitorEmail' => '', 'editVisitorPhone' => '']);
+state(['tenant' => null, 'visitors' => [], 'search' => '', 'selectedVisitor' => null, 'host_id' => null, 'room_id' => null, 'scheduled_at' => '', 'showNewVisitorForm' => false, 'newVisitorName' => '', 'newVisitorEmail' => '', 'newVisitorPhone' => '', 'editingVisitorId' => null, 'editVisitorName' => '', 'editVisitorEmail' => '', 'editVisitorPhone' => '', 'showConfirmModal' => false, 'confirmActionType' => '', 'confirmId' => null, 'confirmMessage' => '']);
 
 mount(function () {
     $this->tenant = Tenant::firstOrCreate(
@@ -131,6 +131,31 @@ $quickCheckIn = function() {
     $this->loadVisitors();
 };
 
+$confirmAction = function(string $actionType, ?int $id, string $message) {
+    $this->confirmActionType = $actionType;
+    $this->confirmId = $id;
+    $this->confirmMessage = $message;
+    $this->showConfirmModal = true;
+};
+
+$executeAction = function() {
+    if ($this->confirmActionType === 'deleteVisitor' && $this->confirmId) {
+        $this->deleteVisitor($this->confirmId);
+    }
+    
+    $this->showConfirmModal = false;
+    $this->confirmActionType = '';
+    $this->confirmId = null;
+    $this->confirmMessage = '';
+};
+
+$closeConfirmModal = function() {
+    $this->showConfirmModal = false;
+    $this->confirmActionType = '';
+    $this->confirmId = null;
+    $this->confirmMessage = '';
+};
+
 ?>
 
 <div>
@@ -219,7 +244,7 @@ $quickCheckIn = function() {
                                     </button>
                                     <div style="display: flex; gap: 0.5rem;">
                                         <button wire:click="editVisitor({{ $visitor->id }})" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem;">Edit</button>
-                                        <button wire:click="deleteVisitor({{ $visitor->id }})" wire:confirm="Delete this visitor? This removes their history." class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem; border-color: #ef4444; color: #ef4444;">Delete</button>
+                                        <button wire:click="confirmAction('deleteVisitor', {{ $visitor->id }}, 'Delete this visitor? This removes their history.')" class="btn btn-outline" style="padding: 0.5rem 1rem; font-size: 0.875rem; border-color: #ef4444; color: #ef4444;">Delete</button>
                                     </div>
                                 </div>
                             </div>
@@ -260,4 +285,24 @@ $quickCheckIn = function() {
         @endif
         
     </div>
+
+    <!-- Global Action Confirmation Modal -->
+    @if($showConfirmModal)
+        <div class="fixed inset-0 z-[60] flex items-center justify-center bg-gray-900/60 backdrop-blur-sm" wire:click="$set('showConfirmModal', false)" style="animation: fade-in-up 0.3s ease-out forwards;">
+            <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100 m-4 relative" wire:click.stop>
+                <div class="p-8 text-center">
+                    <div class="w-16 h-16 bg-[#FF4B4B]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <svg class="w-8 h-8 text-[#FF4B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    </div>
+                    <h3 class="text-2xl font-extrabold" style="color: #111827; margin-bottom: 0.5rem;">Are you certain?</h3>
+                    <p style="color: #6B7280; margin-bottom: 2rem; font-size: 0.875rem;">{{ $confirmMessage }}</p>
+                    <div style="display: flex; justify-content: center; gap: 0.75rem;">
+                        <button wire:click="closeConfirmModal" class="btn btn-outline" style="border: none; color: #4B5563;">Cancel</button>
+                        <button wire:click="executeAction" class="btn" style="background: #FF4B4B; color: white;">Yes, Proceed</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
 </div>

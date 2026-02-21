@@ -1,329 +1,297 @@
 <?php
 
-use Livewire\Volt\Component;
-use Livewire\Attributes\Layout;
-use Livewire\WithFileUploads;
+use function Livewire\Volt\{state, mount, on, layout, usesFileUploads};
 use App\Models\Tenant;
 use App\Models\MeetingRoom;
 use App\Models\Visit;
 use App\Models\Location;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
-new #[Layout('components.layouts.app')] class extends Component {
-    use WithFileUploads;
+usesFileUploads();
+layout('components.layouts.app');
 
-    public ?Tenant $tenant = null;
-    public string $nda_text = '';
-    public int $data_retention_days = 180;
-    public $logo = null;
-    
-    public $locations = [];
-    public string $newLocationName = '';
-    public ?int $editingLocationId = null;
-    public string $editLocationName = '';
+state([
+    'tenant' => null, 'nda_text' => '', 'data_retention_days' => 180, 'logo' => null,
+    'locations' => [], 'newLocationName' => '', 'editingLocationId' => null, 'editLocationName' => '',
+    'rooms' => [], 'subTenants' => [], 'newSubTenantName' => '', 'newSubTenantDomain' => '', 'activeTab' => 'settings', 'stats' => [], 
+    'newRoomName' => '', 'newRoomCapacity' => 1, 'newRoomLocationId' => '', 'newRoomIsAvailable' => true, 'newRoomAmenities' => ['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false],
+    'editingRoomId' => null, 'editRoomName' => '', 'editRoomCapacity' => 1, 'editRoomLocationId' => '', 'editRoomIsAvailable' => true, 'editRoomAmenities' => ['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false],
+    'editingSubTenantId' => null, 'editSubTenantName' => '', 'editSubTenantDomain' => '', 'editSubTenantContractStart' => '', 'editSubTenantContractEnd' => '', 'newSubTenantContractStart' => '', 'newSubTenantContractEnd' => '',
+    'showConfirmModal' => false, 'confirmActionType' => '', 'confirmId' => null, 'confirmMessage' => ''
+]);
 
-    public $rooms = [];
-    public $subTenants = [];
-    public string $newSubTenantName = '';
-    public string $newSubTenantDomain = '';
-    public string $activeTab = 'settings';
-    public array $stats = [];
-    
-    public string $newRoomName = '';
-    public int $newRoomCapacity = 1;
-    public $newRoomLocationId = '';
-    public bool $newRoomIsAvailable = true;
-    public array $newRoomAmenities = ['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false];
-    
-    public ?int $editingRoomId = null;
-    public string $editRoomName = '';
-    public int $editRoomCapacity = 1;
-    public $editRoomLocationId = '';
-    public bool $editRoomIsAvailable = true;
-    public array $editRoomAmenities = ['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false];
-    
-    public ?int $editingSubTenantId = null;
-    public string $editSubTenantName = '';
-    public string $editSubTenantDomain = '';
-    public string $editSubTenantContractStart = '';
-    public string $editSubTenantContractEnd = '';
-    public string $newSubTenantContractStart = '';
-    public string $newSubTenantContractEnd = '';
-
-    public bool $showConfirmModal = false;
-    public string $confirmActionType = '';
-    public ?int $confirmId = null;
-    public string $confirmMessage = '';
-
-    public function mount() {
-        if (request()->has('tenant_id')) {
-            $this->tenant = Tenant::findOrFail(request('tenant_id'));
-        } else {
-            $this->tenant = Tenant::firstOrCreate(
-                ['domain' => 'demo'],
-                ['name' => 'Demo Tenant', 'nda_text' => 'Demo NDA']
-            );
-        }
-        $this->nda_text = $this->tenant->nda_text ?? '';
-        $this->data_retention_days = $this->tenant->data_retention_days ?? 180;
-        
-        $this->loadLocations();
-        $this->loadRooms();
-        $this->loadSubTenants();
-        $this->loadStats();
+mount(function () {
+    if (request()->has('tenant_id')) {
+        $this->tenant = Tenant::findOrFail(request('tenant_id'));
+    } else {
+        $this->tenant = Tenant::firstOrCreate(
+            ['domain' => 'demo'],
+            ['name' => 'Demo Tenant', 'nda_text' => 'Demo NDA']
+        );
     }
+    $this->nda_text = $this->tenant->nda_text;
+    $this->data_retention_days = $this->tenant->data_retention_days;
+    $this->loadLocations();
+    $this->loadRooms();
+    $this->loadSubTenants();
+    $this->loadStats();
+});
 
-    public function loadLocations() {
-        $this->locations = $this->tenant->locations()->get();
-    }
-
-    public function loadRooms() {
-        $this->rooms = $this->tenant->meetingRooms()->get();
-    }
-
-    public function loadSubTenants() {
-        $this->subTenants = $this->tenant->subTenants()
-            ->with(['contacts' => fn($query) => $query->where('is_primary', true)])
-            ->withCount(['users', 'visits'])
-            ->get();
-    }
-
-    public function loadStats() {
-        $this->stats = $this->tenant->visits()
-            ->selectRaw('DATE(created_at) as date, count(*) as count')
-            ->groupBy('date')
-            ->orderBy('date', 'desc')
-            ->take(7)
-            ->get()
-            ->toArray();
-        
-        $this->stats['totalLocations'] = $this->tenant->locations()->count();
-        $this->stats['totalRooms'] = $this->tenant->meetingRooms()->count();
-        $this->stats['totalVisitors'] = $this->tenant->visits()->count();
-    }
-
-    public function saveSettings() {
-        $this->validate([
-            'logo' => 'nullable|image|max:2048', // 2MB Max
-        ]);
-
-        $data = [
-            'nda_text' => $this->nda_text,
-            'data_retention_days' => $this->data_retention_days,
-        ];
-
-        if ($this->logo) {
-            if ($this->tenant->logo_path) {
-                Storage::disk('public')->delete($this->tenant->logo_path);
-            }
-            $path = $this->logo->store('tenant-logos', 'public');
-            $data['logo_path'] = $path;
-        }
-
-        $this->tenant->update($data);
-        $this->tenant->refresh();
-        session()->flash('message', 'Facility configuration saved successfully.');
-    }
-
-    public function addLocation() {
-        $this->validate(['newLocationName' => 'required|string|max:255']);
-        $this->tenant->locations()->create(['name' => $this->newLocationName]);
-        $this->newLocationName = '';
-        $this->loadLocations();
-        session()->flash('location_message', 'Building/Location added successfully.');
-    }
-
-    public function editLocation($id) {
-        $location = Location::findOrFail($id);
-        $this->editingLocationId = $id;
-        $this->editLocationName = $location->name;
-    }
-
-    public function updateLocation() {
-        $this->validate(['editLocationName' => 'required|string|max:255']);
-        $location = Location::findOrFail($this->editingLocationId);
-        $location->update(['name' => $this->editLocationName]);
-        $this->editingLocationId = null;
-        $this->loadLocations();
-        session()->flash('location_message', 'Building/Location updated.');
-    }
-
-    public function cancelEditLocation() {
-        $this->editingLocationId = null;
-    }
-
-    public function deleteLocation($id) {
-        $location = Location::findOrFail($id);
-        $location->delete();
-        $this->loadLocations();
-        $this->loadRooms(); // Rooms cascade, so refresh
-        session()->flash('location_message', 'Location permanently deleted.');
-    }
-
-    public function addRoom() {
-        $this->validate([
-            'newRoomName' => 'required|string', 
-            'newRoomCapacity' => 'required|integer|min:1', 
-            'newRoomLocationId' => 'required|exists:locations,id'
-        ]);
-        
-        $this->tenant->meetingRooms()->create([
-            'location_id' => $this->newRoomLocationId,
-            'name' => $this->newRoomName,
-            'capacity' => $this->newRoomCapacity,
-            'is_available' => $this->newRoomIsAvailable,
-            'amenities' => $this->newRoomAmenities,
-        ]);
-        
-        $this->newRoomName = '';
-        $this->newRoomCapacity = 1;
-        $this->newRoomLocationId = '';
-        $this->newRoomIsAvailable = true;
-        $this->newRoomAmenities = ['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false];
-        
-        $this->loadRooms();
-        session()->flash('room_message', 'Room added successfully.');
-    }
-
-    public function editRoom($id) {
-        $room = MeetingRoom::findOrFail($id);
-        $this->editingRoomId = $id;
-        $this->editRoomName = $room->name;
-        $this->editRoomCapacity = $room->capacity;
-        $this->editRoomLocationId = $room->location_id;
-        $this->editRoomIsAvailable = $room->is_available;
-        $this->editRoomAmenities = array_merge(['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false], $room->amenities ?? []);
-    }
-
-    public function updateRoom() {
-        $this->validate([
-            'editRoomName' => 'required|string|max:255',
-            'editRoomCapacity' => 'required|integer|min:1',
-            'editRoomLocationId' => 'required|exists:locations,id',
-        ]);
-
-        $room = MeetingRoom::findOrFail($this->editingRoomId);
-        $room->update([
-            'name' => $this->editRoomName,
-            'capacity' => $this->editRoomCapacity,
-            'location_id' => $this->editRoomLocationId,
-            'is_available' => $this->editRoomIsAvailable,
-            'amenities' => $this->editRoomAmenities,
-        ]);
-
-        $this->editingRoomId = null;
-        $this->loadRooms();
-        session()->flash('room_message', 'Room updated successfully.');
-    }
-
-    public function cancelEditRoom() {
-        $this->editingRoomId = null;
-    }
-
-    public function deleteRoom($id) {
-        $room = MeetingRoom::findOrFail($id);
-        $room->delete();
-        $this->loadRooms();
-        session()->flash('room_message', 'Room deleted permanently.');
-    }
-
-    public function addSubTenant() {
-        $this->validate([
-            'newSubTenantName' => 'required|string|max:255',
-            'newSubTenantDomain' => 'nullable|string|max:255|unique:tenants,domain',
-            'newSubTenantContractStart' => 'nullable|date',
-            'newSubTenantContractEnd' => 'nullable|date|after_or_equal:newSubTenantContractStart',
-        ]);
-        $this->tenant->subTenants()->create([
-            'name' => $this->newSubTenantName,
-            'domain' => $this->newSubTenantDomain,
-            'contract_start_date' => $this->newSubTenantContractStart ? Carbon::parse($this->newSubTenantContractStart) : null,
-            'contract_end_date' => $this->newSubTenantContractEnd ? Carbon::parse($this->newSubTenantContractEnd) : null,
-            'nda_text' => $this->tenant->nda_text, // Inherit NDA text by default
-            'data_retention_days' => $this->tenant->data_retention_days,
-        ]);
-        $this->newSubTenantName = '';
-        $this->newSubTenantDomain = '';
-        $this->newSubTenantContractStart = '';
-        $this->newSubTenantContractEnd = '';
-        $this->loadSubTenants();
-        session()->flash('subtenant_message', 'Sub-Tenant workspace created successfully.');
-    }
-
-    public function editSubTenant($id) {
-        $subTenant = Tenant::findOrFail($id);
-        $this->editingSubTenantId = $id;
-        $this->editSubTenantName = $subTenant->name;
-        $this->editSubTenantDomain = $subTenant->domain ?? '';
-        $this->editSubTenantContractStart = $subTenant->contract_start_date ? $subTenant->contract_start_date->format('Y-m-d') : '';
-        $this->editSubTenantContractEnd = $subTenant->contract_end_date ? $subTenant->contract_end_date->format('Y-m-d') : '';
-    }
-
-    public function updateSubTenant() {
-        $this->validate([
-            'editSubTenantName' => 'required|string|max:255',
-            'editSubTenantDomain' => ['nullable', 'string', 'max:255', Rule::unique('tenants', 'domain')->ignore($this->editingSubTenantId)],
-            'editSubTenantContractStart' => 'nullable|date',
-            'editSubTenantContractEnd' => 'nullable|date|after_or_equal:editSubTenantContractStart',
-        ]);
-
-        $subTenant = Tenant::findOrFail($this->editingSubTenantId);
-        $subTenant->update([
-            'name' => $this->editSubTenantName,
-            'domain' => $this->editSubTenantDomain,
-            'contract_start_date' => $this->editSubTenantContractStart ? Carbon::parse($this->editSubTenantContractStart) : null,
-            'contract_end_date' => $this->editSubTenantContractEnd ? Carbon::parse($this->editSubTenantContractEnd) : null,
-        ]);
-
-        $this->editingSubTenantId = null;
-        $this->loadSubTenants();
-        session()->flash('subtenant_message', 'Sub-Tenant data updated successfully.');
-    }
-
-    public function cancelEditSubTenant() {
-        $this->editingSubTenantId = null;
-    }
-
-    public function deleteSubTenant($id) {
-        $subTenant = Tenant::findOrFail($id);
-        $subTenant->delete();
-        $this->loadSubTenants();
-        session()->flash('subtenant_message', 'Sub-Tenant deleted permanently.');
-    }
-
-    public function setTab($tab) {
-        $this->activeTab = $tab;
-    }
-
-    public function confirmAction($actionType, $id, $message) {
-        $this->confirmActionType = $actionType;
-        $this->confirmId = $id;
-        $this->confirmMessage = $message;
-        $this->showConfirmModal = true;
-    }
-
-    public function executeAction() {
-        if ($this->confirmActionType === 'deleteRoom' && $this->confirmId) {
-            $this->deleteRoom($this->confirmId);
-        } elseif ($this->confirmActionType === 'deleteSubTenant' && $this->confirmId) {
-            $this->deleteSubTenant($this->confirmId);
-        }
-        
-        $this->showConfirmModal = false;
-        $this->confirmActionType = '';
-        $this->confirmId = null;
-        $this->confirmMessage = '';
-    }
-
-    public function closeConfirmModal() {
-        $this->showConfirmModal = false;
-        $this->confirmActionType = '';
-        $this->confirmId = null;
-        $this->confirmMessage = '';
-    }
+$loadLocations = function() {
+    $this->locations = $this->tenant->locations()->get();
 };
+
+$loadRooms = function() {
+    $this->rooms = $this->tenant->meetingRooms()->get();
+};
+
+$loadSubTenants = function() {
+    $this->subTenants = $this->tenant->subTenants()
+        ->with(['contacts' => fn($query) => $query->where('is_primary', true)])
+        ->withCount(['users', 'visits'])
+        ->get();
+};
+
+$loadStats = function() {
+    $this->stats = $this->tenant->visits()
+        ->selectRaw('DATE(created_at) as date, count(*) as count')
+        ->groupBy('date')
+        ->orderBy('date', 'desc')
+        ->take(7)
+        ->get()
+        ->toArray();
+    
+    $this->stats['totalLocations'] = $this->tenant->locations()->count();
+    $this->stats['totalRooms'] = $this->tenant->meetingRooms()->count();
+    $this->stats['totalVisitors'] = $this->tenant->visits()->count();
+};
+
+$saveSettings = function() {
+    $this->validate([
+        'logo' => 'nullable|image|max:2048', // 2MB Max
+    ]);
+
+    $data = [
+        'nda_text' => $this->nda_text,
+        'data_retention_days' => $this->data_retention_days,
+    ];
+
+    if ($this->logo) {
+        if ($this->tenant->logo_path) {
+            Storage::disk('public')->delete($this->tenant->logo_path);
+        }
+        $path = $this->logo->store('tenant-logos', 'public');
+        $data['logo_path'] = $path;
+    }
+
+    $this->tenant->update($data);
+    
+    // Refresh tenant to ensure UI picks up new logo instantly
+    $this->tenant->refresh();
+    session()->flash('message', 'Facility configuration saved successfully.');
+};
+
+$addLocation = function() {
+    $this->validate(['newLocationName' => 'required|string|max:255']);
+    $this->tenant->locations()->create(['name' => $this->newLocationName]);
+    $this->newLocationName = '';
+    $this->loadLocations();
+    session()->flash('location_message', 'Building/Location added successfully.');
+};
+
+$editLocation = function($id) {
+    $location = Location::findOrFail($id);
+    $this->editingLocationId = $id;
+    $this->editLocationName = $location->name;
+};
+
+$updateLocation = function() {
+    $this->validate(['editLocationName' => 'required|string|max:255']);
+    $location = Location::findOrFail($this->editingLocationId);
+    $location->update(['name' => $this->editLocationName]);
+    $this->editingLocationId = null;
+    $this->loadLocations();
+    session()->flash('location_message', 'Building/Location updated.');
+};
+
+$cancelEditLocation = function() {
+    $this->editingLocationId = null;
+};
+
+$deleteLocation = function($id) {
+    $location = Location::findOrFail($id);
+    $location->delete();
+    $this->loadLocations();
+    $this->loadRooms(); // Rooms cascade, so refresh
+    session()->flash('location_message', 'Location permanently deleted.');
+};
+
+$addRoom = function() {
+    $this->validate([
+        'newRoomName' => 'required|string', 
+        'newRoomCapacity' => 'required|integer|min:1', 
+        'newRoomLocationId' => 'required|exists:locations,id'
+    ]);
+    
+    $this->tenant->meetingRooms()->create([
+        'location_id' => $this->newRoomLocationId,
+        'name' => $this->newRoomName,
+        'capacity' => $this->newRoomCapacity,
+        'is_available' => $this->newRoomIsAvailable,
+        'amenities' => $this->newRoomAmenities,
+    ]);
+    
+    $this->newRoomName = '';
+    $this->newRoomCapacity = 1;
+    $this->newRoomLocationId = '';
+    $this->newRoomIsAvailable = true;
+    $this->newRoomAmenities = ['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false];
+    
+    $this->loadRooms();
+    session()->flash('room_message', 'Room added successfully.');
+};
+
+$editRoom = function($id) {
+    $room = MeetingRoom::findOrFail($id);
+    $this->editingRoomId = $id;
+    $this->editRoomName = $room->name;
+    $this->editRoomCapacity = $room->capacity;
+    $this->editRoomLocationId = $room->location_id;
+    $this->editRoomIsAvailable = $room->is_available;
+    $this->editRoomAmenities = array_merge(['tv' => false, 'whiteboard' => false, 'ac' => false, 'video' => false], $room->amenities ?? []);
+};
+
+$updateRoom = function() {
+    $this->validate([
+        'editRoomName' => 'required|string|max:255',
+        'editRoomCapacity' => 'required|integer|min:1',
+        'editRoomLocationId' => 'required|exists:locations,id',
+    ]);
+
+    $room = MeetingRoom::findOrFail($this->editingRoomId);
+    $room->update([
+        'name' => $this->editRoomName,
+        'capacity' => $this->editRoomCapacity,
+        'location_id' => $this->editRoomLocationId,
+        'is_available' => $this->editRoomIsAvailable,
+        'amenities' => $this->editRoomAmenities,
+    ]);
+
+    $this->editingRoomId = null;
+    $this->loadRooms();
+    session()->flash('room_message', 'Room updated successfully.');
+};
+
+$cancelEditRoom = function() {
+    $this->editingRoomId = null;
+};
+
+$deleteRoom = function($id) {
+    $room = MeetingRoom::findOrFail($id);
+    $room->delete();
+    $this->loadRooms();
+    session()->flash('room_message', 'Room deleted permanently.');
+};
+
+$addSubTenant = function() {
+    $this->validate([
+        'newSubTenantName' => 'required|string|max:255',
+        'newSubTenantDomain' => 'nullable|string|max:255|unique:tenants,domain',
+        'newSubTenantContractStart' => 'nullable|date',
+        'newSubTenantContractEnd' => 'nullable|date|after_or_equal:newSubTenantContractStart',
+    ]);
+    $this->tenant->subTenants()->create([
+        'name' => $this->newSubTenantName,
+        'domain' => $this->newSubTenantDomain,
+        'contract_start_date' => $this->newSubTenantContractStart ? Carbon::parse($this->newSubTenantContractStart) : null,
+        'contract_end_date' => $this->newSubTenantContractEnd ? Carbon::parse($this->newSubTenantContractEnd) : null,
+        'nda_text' => $this->tenant->nda_text, // Inherit NDA text by default
+        'data_retention_days' => $this->tenant->data_retention_days,
+    ]);
+    $this->newSubTenantName = '';
+    $this->newSubTenantDomain = '';
+    $this->newSubTenantContractStart = '';
+    $this->newSubTenantContractEnd = '';
+    $this->loadSubTenants();
+    session()->flash('subtenant_message', 'Sub-Tenant workspace created successfully.');
+};
+
+$editSubTenant = function($id) {
+    $subTenant = Tenant::findOrFail($id);
+    $this->editingSubTenantId = $id;
+    $this->editSubTenantName = $subTenant->name;
+    $this->editSubTenantDomain = $subTenant->domain;
+    $this->editSubTenantContractStart = $subTenant->contract_start_date ? $subTenant->contract_start_date->format('Y-m-d') : '';
+    $this->editSubTenantContractEnd = $subTenant->contract_end_date ? $subTenant->contract_end_date->format('Y-m-d') : '';
+};
+
+$updateSubTenant = function() {
+    $this->validate([
+        'editSubTenantName' => 'required|string|max:255',
+        'editSubTenantDomain' => 'nullable|string|max:255|unique:tenants,domain,' . $this->editingSubTenantId,
+        'editSubTenantContractStart' => 'nullable|date',
+        'editSubTenantContractEnd' => 'nullable|date|after_or_equal:editSubTenantContractStart',
+    ]);
+
+    $subTenant = Tenant::findOrFail($this->editingSubTenantId);
+    $subTenant->update([
+        'name' => $this->editSubTenantName,
+        'domain' => $this->editSubTenantDomain,
+        'contract_start_date' => $this->editSubTenantContractStart ? Carbon::parse($this->editSubTenantContractStart) : null,
+        'contract_end_date' => $this->editSubTenantContractEnd ? Carbon::parse($this->editSubTenantContractEnd) : null,
+    ]);
+
+    $this->editingSubTenantId = null;
+    $this->loadSubTenants();
+    session()->flash('subtenant_message', 'Sub-Tenant data updated successfully.');
+};
+
+$cancelEditSubTenant = function() {
+    $this->editingSubTenantId = null;
+};
+
+$deleteSubTenant = function($id) {
+    $subTenant = Tenant::findOrFail($id);
+    $subTenant->delete();
+    $this->loadSubTenants();
+    session()->flash('subtenant_message', 'Sub-Tenant deleted permanently.');
+};
+
+$setTab = function($tab) {
+    // Reset specific states when navigating tabs if needed
+    $this->activeTab = $tab;
+};
+
+$confirmAction = function(string $actionType, ?int $id, string $message) {
+    $this->confirmActionType = $actionType;
+    $this->confirmId = $id;
+    $this->confirmMessage = $message;
+    $this->showConfirmModal = true;
+};
+
+$executeAction = function() {
+    if ($this->confirmActionType === 'deleteRoom' && $this->confirmId) {
+        $this->deleteRoom($this->confirmId);
+    } elseif ($this->confirmActionType === 'deleteSubTenant' && $this->confirmId) {
+        $this->deleteSubTenant($this->confirmId);
+    }
+    
+    $this->showConfirmModal = false;
+    $this->confirmActionType = '';
+    $this->confirmId = null;
+    $this->confirmMessage = '';
+};
+
+$closeConfirmModal = function() {
+    $this->showConfirmModal = false;
+    $this->confirmActionType = '';
+    $this->confirmId = null;
+    $this->confirmMessage = '';
+};
+
+$booted = true;
+
 ?>
 
 <div class="flex h-screen w-full overflow-hidden antialiased">

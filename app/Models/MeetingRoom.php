@@ -13,12 +13,14 @@ class MeetingRoom extends Model
         'location_id',
         'name',
         'capacity',
+        'is_available',
         'amenities',
     ];
 
     protected function casts(): array
     {
         return [
+            'is_available' => 'boolean',
             'amenities' => 'array',
         ];
     }

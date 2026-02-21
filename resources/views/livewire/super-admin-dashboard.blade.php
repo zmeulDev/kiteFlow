@@ -1,6 +1,7 @@
 <?php
 
-use function Livewire\Volt\{state, mount, layout};
+use Livewire\Volt\Component;
+use Livewire\Attributes\Layout;
 use App\Models\Tenant;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
@@ -9,167 +10,211 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
-layout('components.layouts.app');
+new #[Layout('components.layouts.app')] class extends Component {
+    public $tenants = [];
+    public $activeTab = 'tenants';
+    public $newTenantName = '';
+    public $newTenantDomain = '';
+    public $roles = [];
+    public $users = [];
+    public $newUser = ['name' => '', 'email' => '', 'password' => '', 'tenant_id' => '', 'role' => ''];
+    public $showCreateTenantModal = false;
+    public $totalTenants = 0;
+    public $totalActiveTenants = 0;
+    public $totalUsers = 0;
+    public $totalMeetingRooms = 0;
+    public $showEditUserModal = false;
+    public $editingUserId = null;
+    public $editUserData = ['name' => '', 'email' => '', 'tenant_id' => '', 'role' => '', 'is_active' => true];
 
-state(['tenants' => [], 'activeTab' => 'tenants', 'newTenantName' => '', 'newTenantDomain' => '', 'roles' => [], 'users' => [], 'newUser' => ['name' => '', 'email' => '', 'password' => '', 'tenant_id' => '', 'role' => ''], 'showCreateTenantModal' => false, 'totalTenants' => 0, 'totalUsers' => 0, 'showEditUserModal' => false, 'editingUserId' => null, 'editUserData' => ['name' => '', 'email' => '', 'tenant_id' => '', 'role' => '', 'is_active' => true]]);
+    // Unified Confirmation State
+    public bool $showConfirmModal = false;
+    public string $confirmActionType = '';
+    public ?int $confirmId = null;
+    public string $confirmMessage = '';
 
-mount(function () {
-    // Ensure roles exist
-    $coreRoles = ['SuperAdmin', 'TenantAdmin', 'SubTenantAdmin', 'FrontDesk', 'StandardUser'];
-    foreach ($coreRoles as $role) {
-        Role::firstOrCreate(['name' => $role]);
-    }
-    
-    $this->loadData();
-});
-
-$loadData = function() {
-    $this->tenants = Tenant::whereNull('parent_id')->withCount('users')->orderByDesc('created_at')->get();
-    $this->roles = Role::where('name', '!=', 'SuperAdmin')->get();
-    $this->users = User::with('allTenantRoles', 'tenant')->get();
-    
-    $this->totalTenants = Tenant::count();
-    $this->totalUsers = User::count();
-};
-
-$setTab = function($tab) {
-    $this->activeTab = $tab;
-};
-
-$createTenant = function() {
-    $this->validate([
-        'newTenantName' => 'required|string|max:255',
-        'newTenantDomain' => 'required|string|max:255|unique:tenants,domain',
-    ]);
-    
-    Tenant::create([
-        'name' => $this->newTenantName,
-        'domain' => $this->newTenantDomain,
-        'status' => 'Active',
-    ]);
-    
-    session()->flash('message', 'Tenant environment provisioned.');
-    $this->newTenantName = '';
-    $this->newTenantDomain = '';
-    $this->showCreateTenantModal = false;
-    $this->loadData();
-};
-
-$openCreateTenantModal = function() {
-    $this->newTenantName = '';
-    $this->newTenantDomain = '';
-    $this->showCreateTenantModal = true;
-};
-
-$closeCreateTenantModal = function() {
-    $this->showCreateTenantModal = false;
-};
-
-
-
-$createUser = function() {
-    $this->validate([
-        'newUser.name' => 'required|string|max:255',
-        'newUser.email' => 'required|email|unique:users,email',
-        'newUser.password' => 'required|min:8',
-        'newUser.tenant_id' => 'required|exists:tenants,id',
-        'newUser.role' => 'required|exists:roles,name',
-    ]);
-
-    $user = User::create([
-        'name' => $this->newUser['name'],
-        'email' => $this->newUser['email'],
-        'password' => Hash::make($this->newUser['password']),
-        'tenant_id' => $this->newUser['tenant_id'],
-    ]);
-
-    setPermissionsTeamId($this->newUser['tenant_id']);
-    $user->assignRole($this->newUser['role']);
-
-    session()->flash('user_message', 'User created and role assigned securely.');
-    $this->newUser = ['name' => '', 'email' => '', 'password' => '', 'tenant_id' => '', 'role' => ''];
-    $this->loadData();
-};
-
-$openEditUserModal = function($id) {
-    // Must find without any team_id restrictions, eager load the direct pivot mapping
-    $user = User::with('allTenantRoles')->findOrFail($id);
-    $this->editingUserId = $id;
-    $this->editUserData = [
-        'name' => $user->name,
-        'email' => $user->email,
-        'tenant_id' => $user->tenant_id,
-        'role' => $user->allTenantRoles->first()?->name ?? '',
-        'is_active' => $user->is_active,
-    ];
-    $this->showEditUserModal = true;
-};
-
-$closeEditUserModal = function() {
-    $this->showEditUserModal = false;
-    $this->editingUserId = null;
-};
-
-$updateUser = function() {
-    $this->validate([
-        'editUserData.name' => 'required|string|max:255',
-        'editUserData.email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->editingUserId)],
-        'editUserData.tenant_id' => 'required|exists:tenants,id',
-        'editUserData.role' => 'required|exists:roles,name',
-        'editUserData.is_active' => 'boolean',
-    ]);
-
-    $user = User::findOrFail($this->editingUserId);
-    $user->update([
-        'name' => $this->editUserData['name'],
-        'email' => $this->editUserData['email'],
-        'tenant_id' => $this->editUserData['tenant_id'],
-        'is_active' => $this->editUserData['is_active'],
-    ]);
-
-    // Force team context to sync the role properly for this user
-    setPermissionsTeamId($this->editUserData['tenant_id']);
-    $user->syncRoles([$this->editUserData['role']]);
-
-    session()->flash('user_message', 'User updated securely.');
-    $this->showEditUserModal = false;
-    $this->editingUserId = null;
-    $this->loadData();
-};
-
-$deleteUser = function($id) {
-    if (auth()->id() === $id) {
-        session()->flash('user_message', 'You cannot delete yourself.');
-        return;
+    public function mount() {
+        $coreRoles = ['SuperAdmin', 'TenantAdmin', 'SubTenantAdmin', 'FrontDesk', 'StandardUser'];
+        foreach ($coreRoles as $role) {
+            Role::firstOrCreate(['name' => $role]);
+        }
+        $this->loadData();
     }
 
-    $user = User::findOrFail($id);
-    $user->delete();
-    session()->flash('user_message', 'System user completely removed.');
-    $this->loadData();
-};
-
-$resetUserPassword = function($id) {
-    if (auth()->id() === $id) {
-        session()->flash('user_message', 'You cannot reset your own password here.');
-        return;
+    public function loadData() {
+        $this->tenants = Tenant::whereNull('parent_id')->withCount('users')->orderByDesc('created_at')->get();
+        $this->roles = Role::where('name', '!=', 'SuperAdmin')->get();
+        $this->users = User::with('allTenantRoles', 'tenant')->get();
+        
+        $this->totalTenants = Tenant::whereNull('parent_id')->count();
+        $this->totalActiveTenants = Tenant::whereNull('parent_id')->where('status', 'Active')->count();
+        $this->totalUsers = User::count();
+        $this->totalMeetingRooms = \App\Models\MeetingRoom::count();
     }
 
-    $user = User::findOrFail($id);
-    $newPassword = Str::random(12);
-    
-    $user->update([
-        'password' => Hash::make($newPassword),
-    ]);
-    
-    // Close modal if open to show the flash message clearly
-    $this->showEditUserModal = false;
-    $this->editingUserId = null;
-    session()->flash('user_message', 'Password reset successfully for ' . $user->email . '. New Password: ' . $newPassword);
-    $this->loadData();
-};
+    public function setTab($tab) {
+        $this->activeTab = $tab;
+        $this->loadData();
+    }
 
-$__volt_compiler_fix = true;
+    public function createTenant() {
+        $this->validate([
+            'newTenantName' => 'required|string|max:255',
+            'newTenantDomain' => 'required|string|max:255|unique:tenants,domain',
+        ]);
+        
+        Tenant::create([
+            'name' => $this->newTenantName,
+            'domain' => $this->newTenantDomain,
+            'status' => 'Active',
+        ]);
+        
+        session()->flash('message', 'Tenant environment provisioned.');
+        $this->newTenantName = '';
+        $this->newTenantDomain = '';
+        $this->showCreateTenantModal = false;
+        $this->loadData();
+    }
+
+    public function openCreateTenantModal() {
+        $this->newTenantName = '';
+        $this->newTenantDomain = '';
+        $this->showCreateTenantModal = true;
+    }
+
+    public function closeCreateTenantModal() {
+        $this->showCreateTenantModal = false;
+    }
+
+    public function createUser() {
+        $this->validate([
+            'newUser.name' => 'required|string|max:255',
+            'newUser.email' => 'required|email|unique:users,email',
+            'newUser.password' => 'required|min:8',
+            'newUser.tenant_id' => 'required|exists:tenants,id',
+            'newUser.role' => 'required|exists:roles,name',
+        ]);
+
+        $user = User::create([
+            'name' => $this->newUser['name'],
+            'email' => $this->newUser['email'],
+            'password' => Hash::make($this->newUser['password']),
+            'tenant_id' => $this->newUser['tenant_id'],
+        ]);
+
+        setPermissionsTeamId($this->newUser['tenant_id']);
+        $user->assignRole($this->newUser['role']);
+
+        session()->flash('user_message', 'User created and role assigned securely.');
+        $this->newUser = ['name' => '', 'email' => '', 'password' => '', 'tenant_id' => '', 'role' => ''];
+        $this->loadData();
+    }
+
+    public function openEditUserModal($id) {
+        $user = User::with('allTenantRoles')->findOrFail($id);
+        $this->editingUserId = $id;
+        $this->editUserData = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'tenant_id' => $user->tenant_id,
+            'role' => $user->allTenantRoles->first()?->name ?? '',
+            'is_active' => $user->is_active,
+        ];
+        $this->showEditUserModal = true;
+    }
+
+    public function closeEditUserModal() {
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+    }
+
+    public function updateUser() {
+        $this->validate([
+            'editUserData.name' => 'required|string|max:255',
+            'editUserData.email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->editingUserId)],
+            'editUserData.tenant_id' => 'required|exists:tenants,id',
+            'editUserData.role' => 'required|exists:roles,name',
+            'editUserData.is_active' => 'boolean',
+        ]);
+
+        $user = User::findOrFail($this->editingUserId);
+        $user->update([
+            'name' => $this->editUserData['name'],
+            'email' => $this->editUserData['email'],
+            'tenant_id' => $this->editUserData['tenant_id'],
+            'is_active' => $this->editUserData['is_active'],
+        ]);
+
+        setPermissionsTeamId($this->editUserData['tenant_id']);
+        $user->syncRoles([$this->editUserData['role']]);
+
+        session()->flash('user_message', 'User updated securely.');
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+        $this->loadData();
+    }
+
+    public function confirmAction(string $actionType, ?int $id, string $message)
+    {
+        $this->confirmActionType = $actionType;
+        $this->confirmId = $id;
+        $this->confirmMessage = $message;
+        $this->showConfirmModal = true;
+    }
+
+    public function executeAction()
+    {
+        if ($this->confirmActionType === 'deleteUser' && $this->confirmId) {
+            $this->deleteUser($this->confirmId);
+        } elseif ($this->confirmActionType === 'resetPassword' && $this->confirmId) {
+            $this->resetUserPassword($this->confirmId);
+        }
+
+        $this->showConfirmModal = false;
+        $this->confirmActionType = '';
+        $this->confirmId = null;
+        $this->confirmMessage = '';
+    }
+
+    public function closeConfirmModal()
+    {
+        $this->showConfirmModal = false;
+        $this->confirmActionType = '';
+        $this->confirmId = null;
+        $this->confirmMessage = '';
+    }
+
+    public function deleteUser($id) {
+        if (auth()->id() === $id) {
+            session()->flash('user_message', 'You cannot delete yourself.');
+            return;
+        }
+
+        $user = User::findOrFail($id);
+        $user->delete();
+        session()->flash('user_message', 'System user completely removed.');
+        $this->loadData();
+    }
+
+    public function resetUserPassword($id) {
+        if (auth()->id() === $id) {
+            session()->flash('user_message', 'You cannot reset your own password here.');
+            return;
+        }
+
+        $user = User::findOrFail($id);
+        $newPassword = Str::random(12);
+        
+        $user->update([
+            'password' => Hash::make($newPassword),
+        ]);
+        
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+        session()->flash('user_message', 'Password reset successfully for ' . $user->email . '. New Password: ' . $newPassword);
+        $this->loadData();
+    }
+};
 ?>
 
 <div class="min-h-screen bg-[#F4F5F7] flex flex-col md:flex-row">
@@ -189,7 +234,10 @@ $__volt_compiler_fix = true;
                     Manage Tenants
                 </button>
                 <button wire:click="setTab('users')" class="w-full text-left px-4 py-3 text-sm font-bold transition-all duration-150 rounded-xl {{ $activeTab === 'users' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}">
-                    Users & RBAC
+                    System Users
+                </button>
+                <button wire:click="setTab('rbac')" class="w-full text-left px-4 py-3 text-sm font-bold transition-all duration-150 rounded-xl {{ $activeTab === 'rbac' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900' }}">
+                    Roles & Policies
                 </button>
                 <a href="/admin/dashboard" class="block w-full text-left px-4 py-3 text-sm font-bold transition-all duration-150 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900">
                     &larr; Tenant View
@@ -201,12 +249,20 @@ $__volt_compiler_fix = true;
                     <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Platform Stats</h3>
                     <div class="space-y-3">
                         <div class="flex justify-between items-center">
-                            <span class="text-sm font-medium text-gray-600">Total Workspaces</span>
-                            <span class="text-sm font-extrabold text-gray-900">{{ $totalTenants }}</span>
+                            <span class="text-sm font-medium text-gray-600">Active Workspaces</span>
+                            <span class="text-sm font-extrabold text-[#FF4B4B]">{{ $totalActiveTenants }}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <span class="text-xs font-medium text-gray-500">Total Workspaces</span>
+                            <span class="text-xs font-extrabold text-gray-600">{{ $totalTenants }}</span>
                         </div>
                         <div class="flex justify-between items-center">
-                            <span class="text-sm font-medium text-gray-600">Total Users</span>
-                            <span class="text-sm font-extrabold text-gray-900">{{ $totalUsers }}</span>
+                            <span class="text-xs font-medium text-gray-500">System Users</span>
+                            <span class="text-xs font-extrabold text-gray-600">{{ $totalUsers }}</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-medium text-gray-500">Global Meetings</span>
+                            <span class="text-xs font-extrabold text-gray-600">{{ $totalMeetingRooms }}</span>
                         </div>
                     </div>
                 </div>
@@ -327,8 +383,14 @@ $__volt_compiler_fix = true;
             <div class="max-w-6xl mx-auto space-y-8 animate-fade-in-up delay-100">
                 <div>
                     <h2 class="text-3xl font-extrabold tracking-tight mb-2 text-gray-900">Identity & RBAC Access</h2>
-                    <p class="text-gray-500">Manage super administrators and tenant administrators across the entire system.</p>
+                    <p class="text-gray-500 mb-6">Manage super administrators and tenant administrators across the entire system.</p>
                 </div>
+                
+                @if(session()->has('user_message'))
+                    <div class="bg-green-100 border border-green-200 text-green-700 p-4 mb-8 animate-fade-in-up font-bold rounded-xl shadow-sm text-center">
+                        {{ session('user_message') }}
+                    </div>
+                @endif
                 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
@@ -364,10 +426,10 @@ $__volt_compiler_fix = true;
                                                 {{ $user->tenant?->name ?? 'System Level' }}
                                             </td>
                                             <td class="text-right">
-                                                <div class="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div class="flex items-center justify-end gap-2 transition-opacity">
                                                     <button wire:click="openEditUserModal({{ $user->id }})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Edit</button>
                                                     @if(auth()->id() !== $user->id)
-                                                        <button wire:click="deleteUser({{ $user->id }})" wire:confirm="Permanently obliterate this user account?" class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Delete</button>
+                                                        <button wire:click="confirmAction('deleteUser', {{ $user->id }}, 'Permanently obliterate this user account?')" class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Delete</button>
                                                     @endif
                                                 </div>
                                             </td>
@@ -381,12 +443,6 @@ $__volt_compiler_fix = true;
                     <div class="lg:col-span-1">
                         <div class="card p-8 bg-white border border-gray-200">
                             <h3 class="text-xl font-extrabold text-gray-900 mb-6">Create System User</h3>
-                            
-                            @if(session()->has('user_message'))
-                                <div class="bg-green-100 border border-green-200 text-green-700 p-3 mb-6 animate-fade-in-up text-sm font-bold rounded-xl text-center">
-                                    {{ session('user_message') }}
-                                </div>
-                            @endif
                             
                             <form wire:submit="createUser" class="space-y-4">
                                 <div class="input-group mb-0">
@@ -484,7 +540,7 @@ $__volt_compiler_fix = true;
                             <div class="flex items-center justify-between pt-4 border-t border-gray-100">
                                 <div>
                                     @if(auth()->id() !== $editingUserId)
-                                        <button type="button" wire:click="resetUserPassword({{ $editingUserId }})" wire:confirm="Are you sure you want to forcibly reset this user's password? They will be locked out until you provide the new one." class="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">Force Reset Password</button>
+                                        <button type="button" wire:click="confirmAction('resetPassword', {{ $editingUserId }}, 'Are you sure you want to forcibly reset this user\'s password? They will be locked out until you provide the new one.')" class="px-4 py-2 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">Force Reset Password</button>
                                     @endif
                                 </div>
                                 <div class="flex items-center gap-3">
@@ -497,6 +553,35 @@ $__volt_compiler_fix = true;
                 </div>
             @endif
 
+        @elseif($activeTab === 'rbac')
+            <div class="max-w-6xl mx-auto space-y-8 animate-fade-in-up delay-100">
+                <div>
+                    <h2 class="text-3xl font-extrabold tracking-tight mb-2 text-gray-900">Global Role-Based Access Control</h2>
+                    <p class="text-gray-500">Manage comprehensive platform roles and map isolated granular permissions. System Default roles are protected from modification.</p>
+                </div>
+                
+                <livewire:rbac-manager />
+            </div>
+            
+        @endif
+
+        <!-- Global Action Confirmation Modal -->
+        @if($showConfirmModal)
+            <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm animate-fade-in-up" wire:click.self="closeConfirmModal">
+                <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-sm overflow-hidden border border-gray-100 m-4">
+                    <div class="p-8 text-center">
+                        <div class="w-16 h-16 bg-[#FF4B4B]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-8 h-8 text-[#FF4B4B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <h3 class="text-2xl font-extrabold text-gray-900 mb-2">Are you certain?</h3>
+                        <p class="text-sm text-gray-500 mb-8">{{ $confirmMessage }}</p>
+                        <div class="flex items-center justify-center gap-3">
+                            <button wire:click="closeConfirmModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">Cancel</button>
+                            <button wire:click="executeAction" class="px-5 py-2.5 text-sm font-bold text-white bg-[#FF4B4B] hover:bg-red-600 shadow-md hover:shadow-lg rounded-xl transition-all">Yes, Proceed</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         @endif
     </main>
 </div>
