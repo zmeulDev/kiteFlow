@@ -46,7 +46,10 @@ class KioskMode extends Component
 
     public function mount(string $tenantSlug, string $accessPointUuid): void
     {
+        // Find tenant by slug
         $this->tenant = Tenant::where('slug', $tenantSlug)->firstOrFail();
+
+        // Find access point by UUID and verify it belongs to the tenant
         $this->accessPoint = AccessPoint::where('uuid', $accessPointUuid)
             ->where('tenant_id', $this->tenant->id)
             ->where('is_kiosk_mode', true)

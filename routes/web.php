@@ -30,7 +30,7 @@ Route::get('/test-livewire', function () {
 Route::get('/', fn () => view('welcome'))->name('home');
 
 // Kiosk mode (public, requires tenant and access point)
-Route::get('/kiosk/{tenant:slug}/{accessPoint:uuid}', KioskMode::class)->name('kiosk');
+Route::get('/kiosk/{tenantSlug}/{accessPointUuid}', KioskMode::class)->name('kiosk');
 
 // Authentication routes
 Route::middleware('guest')->group(function () {

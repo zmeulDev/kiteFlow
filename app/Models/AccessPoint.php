@@ -22,15 +22,18 @@ class AccessPoint extends Model
         'code',
         'type',
         'direction',
+        'description',
         'device_id',
         'ip_address',
         'settings',
+        'requires_badge',
         'is_kiosk_mode',
         'is_active',
     ];
 
     protected $casts = [
         'settings' => 'array',
+        'requires_badge' => 'boolean',
         'is_kiosk_mode' => 'boolean',
         'is_active' => 'boolean',
     ];

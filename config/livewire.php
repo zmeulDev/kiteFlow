@@ -22,6 +22,8 @@ return [
     'legacy_model_binding' => false,
     'inject_assets' => true,
     'asset_url' => null, // Use relative URLs
+    'inject_script_tags' => true, // Inject Livewire script tags
+    'inject_styles' => true, // Inject Livewire styles
     'navigate' => [
         'show_progress_bar' => true,
         'progress_bar_color' => '#2299dd',
