@@ -29,7 +29,19 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'timezone' => 'UTC',
+            'locale' => 'en',
+            'phone' => fake()->phoneNumber(),
+            'department' => fake()->randomElement(['Engineering', 'Sales', 'Marketing', 'HR', 'Operations']),
+            'job_title' => fake()->jobTitle(),
             'is_active' => true,
+            'last_login_at' => now()->subHours(fake()->numberBetween(1, 24)),
+            'preferences' => [
+                'notifications' => [
+                    'email' => true,
+                    'sms' => false,
+                ],
+            ],
         ];
     }
 
@@ -41,5 +53,40 @@ class UserFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'email_verified_at' => null,
         ]);
+    }
+
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
+        ]);
+    }
+
+    public function superAdmin(): static
+    {
+        return $this->afterCreating(function ($user) {
+            $user->assignRole('super-admin');
+        });
+    }
+
+    public function admin(): static
+    {
+        return $this->afterCreating(function ($user) {
+            $user->assignRole('admin');
+        });
+    }
+
+    public function receptionist(): static
+    {
+        return $this->afterCreating(function ($user) {
+            $user->assignRole('receptionist');
+        });
+    }
+
+    public function user(): static
+    {
+        return $this->afterCreating(function ($user) {
+            $user->assignRole('user');
+        });
     }
 }

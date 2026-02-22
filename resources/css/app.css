@@ -1,5 +1,5 @@
-@import 'tailwindcss';
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -8,6 +8,43 @@
 
 @theme {
     --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    
+    /* Brand colors - Coral/Red from wireframes */
+    --color-brand-50: #FFF1F1;
+    --color-brand-100: #FFE1E1;
+    --color-brand-200: #FFC7C7;
+    --color-brand-300: #FFA3A3;
+    --color-brand-400: #FF7070;
+    --color-brand-500: #FF4B4B;
+    --color-brand-600: #E63E3E;
+    --color-brand-700: #C23434;
+    --color-brand-800: #A13030;
+    --color-brand-900: #862C2C;
+    --color-brand-950: #4A1616;
+    
+    /* Sidebar - Dark brown/tan from wireframes */
+    --color-sidebar-50: #faf6f3;
+    --color-sidebar-100: #f5ede7;
+    --color-sidebar-200: #e8d9cc;
+    --color-sidebar-300: #d4bfab;
+    --color-sidebar-400: #bda185;
+    --color-sidebar-500: #a38666;
+    --color-sidebar-600: #8d7055;
+    --color-sidebar-700: #745a46;
+    --color-sidebar-800: #614c3d;
+    --color-sidebar-900: #513f34;
+    --color-sidebar-950: #2a201b;
+    
+    /* Status colors */
+    --color-success: #10B981;
+    --color-warning: #F59E0B;
+    --color-danger: #EF4444;
+    --color-info: #3B82F6;
+    
+    /* Border radius */
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 8px;
 }
 
 :root {
@@ -26,11 +63,9 @@
 
     /* Borders & Soft UI */
     --border-light: #E5E7EB;
-    --radius-lg: 24px;
-    --radius-md: 16px;
-    --radius-sm: 8px;
 }
 
+/* Base styles */
 body {
     background-color: var(--bg-main);
     color: var(--text-primary);

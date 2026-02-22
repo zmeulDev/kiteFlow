@@ -1,59 +1,184 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# KiteFlow - Enterprise Visitor Management SaaS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A production-ready, multi-tenant visitor management platform built with Laravel 12, Livewire 3, Alpine.js, and MySQL.
 
-## About Laravel
+## 🚀 Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Core Features
+- **Multi-tenant Architecture** - Support for businesses, sub-tenants, and complete data isolation
+- **Visitor Management** - Track visitors from check-in to check-out with detailed logs
+- **Meeting Scheduling** - Book rooms, schedule meetings, invite attendees
+- **Self-Service Kiosk Mode** - Touchless check-in with badge printing
+- **Facility Management** - Buildings, zones, access points, parking
+- **Role-based Access Control** - Super Admin, Admin, Receptionist, User roles
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Technical Features
+- **API-First Design** - RESTful API ready for Flutter/React Native apps
+- **Laravel Sanctum** - Token-based API authentication
+- **Spatie Permission** - Comprehensive RBAC system
+- **Livewire 3** - Dynamic, reactive frontend components
+- **Alpine.js** - Lightweight JavaScript interactions
+- **Full Type-Hinting** - Production-ready, zero placeholder code
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## 📋 Requirements
 
-## Learning Laravel
+- PHP 8.2+
+- MySQL 8.0+
+- Composer 2.x
+- Node.js 18+ & NPM
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## 🛠 Installation
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+# 1. Clone and install dependencies
+cd kiteflow
+composer install
+npm install
 
-## Laravel Sponsors
+# 2. Configure environment
+cp .env.example .env
+php artisan key:generate
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+# 3. Update .env with your database credentials
+# DB_DATABASE=kiteflow
+# DB_USERNAME=your_username
+# DB_PASSWORD=your_password
 
-### Premium Partners
+# 4. Create MySQL database
+mysql -u root -p -e "CREATE DATABASE kiteflow CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# 5. Run migrations and seeders
+php artisan migrate
+php artisan db:seed --class=RolesAndPermissionsSeeder
 
-## Contributing
+# 6. Create storage link
+php artisan storage:link
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 7. Build frontend assets
+npm run build
 
-## Code of Conduct
+# 8. Start development server
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## 📁 Project Structure
 
-## Security Vulnerabilities
+```
+kiteflow/
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/Api/    # API Controllers
+│   │   ├── Requests/           # Form Requests
+│   │   └── Resources/          # API Resources
+│   ├── Livewire/               # Livewire Components
+│   │   ├── Dashboard.php
+│   │   ├── Kiosk/
+│   │   ├── Visitors/
+│   │   └── Meetings/
+│   └── Models/                 # Eloquent Models
+│       ├── User.php
+│       ├── Tenant.php
+│       ├── Visitor.php
+│       ├── VisitorVisit.php
+│       ├── Meeting.php
+│       ├── MeetingRoom.php
+│       ├── Building.php
+│       ├── AccessPoint.php
+│       └── ...
+├── database/
+│   ├── migrations/             # Database Schema
+│   └── seeders/
+│       └── RolesAndPermissionsSeeder.php
+├── routes/
+│   ├── api.php                 # API Routes
+│   └── web.php                 # Web Routes
+└── resources/views/
+    ├── layouts/                # Blade Layouts
+    ├── livewire/               # Livewire Views
+    └── auth/                   # Auth Views
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## 🔐 User Roles & Permissions
 
-## License
+| Role | Permissions |
+|------|-------------|
+| **Super Admin** | Full system access, manage all tenants |
+| **Admin** | Full tenant access, manage users & settings |
+| **Receptionist** | Check-in/out visitors, manage kiosks |
+| **User** | View visitors, create meetings |
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 📡 API Endpoints
+
+### Authentication
+```
+POST /api/auth/login          # Login
+POST /api/auth/register       # Register
+POST /api/auth/logout         # Logout
+GET  /api/auth/user           # Current user
+```
+
+### Tenants
+```
+GET    /api/admin/tenants           # List tenants
+POST   /api/admin/tenants           # Create tenant
+GET    /api/tenants/{slug}          # Get tenant
+PUT    /api/tenants/{slug}          # Update tenant
+DELETE /api/tenants/{slug}          # Delete tenant
+```
+
+### Visitors
+```
+GET    /api/tenants/{slug}/visitors           # List visitors
+POST   /api/tenants/{slug}/visitors           # Create visitor
+POST   /api/tenants/{slug}/visitors/check-in  # Check-in visitor
+POST   /api/tenants/{slug}/visitors/check-out/{visit}  # Check-out
+```
+
+### Kiosk Mode
+```
+POST /api/kiosk/{tenant}/{accessPoint}/check-in
+POST /api/kiosk/{tenant}/{accessPoint}/check-out
+GET  /api/kiosk/{tenant}/{accessPoint}/lookup
+GET  /api/kiosk/{tenant}/{accessPoint}/hosts
+```
+
+## 🔧 Configuration
+
+### Multi-Tenant Setup
+
+Each tenant gets:
+- Unique slug for URLs (e.g., `acme.kiteflow.test`)
+- Isolated data and users
+- Custom branding and settings
+
+### Kiosk Setup
+
+1. Create an Access Point with `is_kiosk_mode = true`
+2. Navigate to `/kiosk/{tenant-slug}/{access-point-uuid}`
+3. Visitors can self-check-in
+
+## 🧪 Testing
+
+```bash
+php artisan test
+```
+
+## 📝 TODO / Roadmap
+
+- [ ] Laravel Cashier integration for subscriptions
+- [ ] Email/SMS notifications
+- [ ] Badge printing support
+- [ ] QR code check-in
+- [ ] Flutter mobile app
+- [ ] WebSocket real-time updates
+- [ ] Advanced analytics dashboard
+- [ ] LDAP/SSO integration
+- [ ] Multi-language support
+
+## 📄 License
+
+MIT License
+
+---
+
+Built with ❤️ using Laravel 12

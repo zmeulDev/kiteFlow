@@ -1,11 +1,4 @@
 <?php return array (
-  'laravel/cashier' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Laravel\\Cashier\\CashierServiceProvider',
-    ),
-  ),
   'laravel/pail' => 
   array (
     'providers' => 
@@ -45,13 +38,6 @@
       0 => 'Livewire\\LivewireServiceProvider',
     ),
   ),
-  'livewire/volt' => 
-  array (
-    'providers' => 
-    array (
-      0 => 'Livewire\\Volt\\VoltServiceProvider',
-    ),
-  ),
   'nesbot/carbon' => 
   array (
     'providers' => 
@@ -71,17 +57,6 @@
     'providers' => 
     array (
       0 => 'Termwind\\Laravel\\TermwindServiceProvider',
-    ),
-  ),
-  'simplesoftwareio/simple-qrcode' => 
-  array (
-    'aliases' => 
-    array (
-      'QrCode' => 'SimpleSoftwareIO\\QrCode\\Facades\\QrCode',
-    ),
-    'providers' => 
-    array (
-      0 => 'SimpleSoftwareIO\\QrCode\\QrCodeServiceProvider',
     ),
   ),
   'spatie/laravel-permission' => 

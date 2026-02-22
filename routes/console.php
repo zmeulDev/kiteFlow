@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Schedule;
-use App\Jobs\AutoCheckoutVisitsJob;
-use App\Jobs\PurgeTenantDataJob;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
 
-Schedule::job(new AutoCheckoutVisitsJob())->dailyAt('23:00');
-Schedule::job(new PurgeTenantDataJob())->daily();
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');

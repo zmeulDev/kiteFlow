@@ -7,6 +7,9 @@ use App\Models\Tenant;
 use App\Models\MeetingRoom;
 use App\Models\Visit;
 use App\Models\Location;
+use App\Models\User;
+use Spatie\Permission\Models\Role;
+use Illuminate\Support\Facades\Hash;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -52,6 +55,17 @@ new #[Layout('components.layouts.app')] class extends Component {
     public string $newSubTenantContractStart = '';
     public string $newSubTenantContractEnd = '';
 
+    public bool $isSubTenant = false;
+
+    // User Management
+    public $users = [];
+    public $roles = [];
+    public $newUser = ['name' => '', 'email' => '', 'password' => '', 'role' => ''];
+    public bool $showCreateUserModal = false;
+    public bool $showEditUserModal = false;
+    public ?int $editingUserId = null;
+    public array $editUserData = ['name' => '', 'email' => '', 'role' => '', 'is_active' => true];
+
     public bool $showConfirmModal = false;
     public string $confirmActionType = '';
     public ?int $confirmId = null;
@@ -66,6 +80,14 @@ new #[Layout('components.layouts.app')] class extends Component {
                 ['name' => 'Demo Tenant', 'nda_text' => 'Demo NDA']
             );
         }
+
+        $this->isSubTenant = $this->tenant->parent_id !== null;
+
+        // Set default tab based on tenant type
+        if ($this->isSubTenant) {
+            $this->activeTab = 'details';
+        }
+
         $this->nda_text = $this->tenant->nda_text ?? '';
         $this->data_retention_days = $this->tenant->data_retention_days ?? 180;
         
@@ -73,17 +95,27 @@ new #[Layout('components.layouts.app')] class extends Component {
         $this->loadRooms();
         $this->loadSubTenants();
         $this->loadStats();
+        $this->loadUsers();
     }
 
     public function loadLocations() {
+        if (!$this->tenant) {
+            return;
+        }
         $this->locations = $this->tenant->locations()->get();
     }
 
     public function loadRooms() {
+        if (!$this->tenant) {
+            return;
+        }
         $this->rooms = $this->tenant->meetingRooms()->get();
     }
 
     public function loadSubTenants() {
+        if (!$this->tenant) {
+            return;
+        }
         $this->subTenants = $this->tenant->subTenants()
             ->with(['contacts' => fn($query) => $query->where('is_primary', true)])
             ->withCount(['users', 'visits'])
@@ -91,6 +123,10 @@ new #[Layout('components.layouts.app')] class extends Component {
     }
 
     public function loadStats() {
+        if (!$this->tenant) {
+            return;
+        }
+
         $this->stats = $this->tenant->visits()
             ->selectRaw('DATE(created_at) as date, count(*) as count')
             ->groupBy('date')
@@ -98,10 +134,117 @@ new #[Layout('components.layouts.app')] class extends Component {
             ->take(7)
             ->get()
             ->toArray();
-        
+
         $this->stats['totalLocations'] = $this->tenant->locations()->count();
         $this->stats['totalRooms'] = $this->tenant->meetingRooms()->count();
         $this->stats['totalVisitors'] = $this->tenant->visits()->count();
+    }
+
+    public function loadUsers() {
+        if (!$this->tenant) {
+            return;
+        }
+        $this->users = $this->tenant->users()->with('allTenantRoles')->get();
+        $this->roles = Role::where('name', '!=', 'SuperAdmin')->get();
+    }
+
+    // User Management Methods
+    public function createUser() {
+        if (!$this->tenant) {
+            return;
+        }
+
+        $this->validate([
+            'newUser.name' => 'required|string|max:255',
+            'newUser.email' => 'required|email|unique:users,email',
+            'newUser.password' => 'required|min:8',
+            'newUser.role' => 'required|exists:roles,name',
+        ]);
+
+        $user = User::create([
+            'name' => $this->newUser['name'],
+            'email' => $this->newUser['email'],
+            'password' => Hash::make($this->newUser['password']),
+            'tenant_id' => $this->tenant->id,
+        ]);
+
+        setPermissionsTeamId($this->tenant->id);
+        $user->assignRole($this->newUser['role']);
+
+        session()->flash('user_message', 'User created successfully.');
+        $this->newUser = ['name' => '', 'email' => '', 'password' => '', 'role' => ''];
+        $this->showCreateUserModal = false;
+        $this->loadUsers();
+    }
+
+    public function openCreateUserModal() {
+        $this->newUser = ['name' => '', 'email' => '', 'password' => '', 'role' => ''];
+        $this->showCreateUserModal = true;
+    }
+
+    public function closeCreateUserModal() {
+        $this->showCreateUserModal = false;
+    }
+
+    public function openEditUserModal($id) {
+        $user = User::with('allTenantRoles')->findOrFail($id);
+        $this->editingUserId = $id;
+        $this->editUserData = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'role' => $user->allTenantRoles->first()?->name ?? '',
+            'is_active' => $user->is_active,
+        ];
+        $this->showEditUserModal = true;
+    }
+
+    public function closeEditUserModal() {
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+    }
+
+    public function updateUser() {
+        if (!$this->tenant) {
+            return;
+        }
+
+        $this->validate([
+            'editUserData.name' => 'required|string|max:255',
+            'editUserData.email' => ['required', 'email', Rule::unique('users', 'email')->ignore($this->editingUserId)],
+            'editUserData.role' => 'required|exists:roles,name',
+            'editUserData.is_active' => 'boolean',
+        ]);
+
+        $user = User::findOrFail($this->editingUserId);
+        $user->update([
+            'name' => $this->editUserData['name'],
+            'email' => $this->editUserData['email'],
+            'is_active' => $this->editUserData['is_active'],
+        ]);
+
+        setPermissionsTeamId($this->tenant->id);
+        $user->syncRoles([$this->editUserData['role']]);
+
+        session()->flash('user_message', 'User updated successfully.');
+        $this->showEditUserModal = false;
+        $this->editingUserId = null;
+        $this->loadUsers();
+    }
+
+    public function deleteUser($id) {
+        if (!$this->tenant) {
+            return;
+        }
+
+        if (auth()->id() === $id) {
+            session()->flash('user_message', 'You cannot delete yourself.');
+            return;
+        }
+
+        $user = User::findOrFail($id);
+        $user->delete();
+        session()->flash('user_message', 'User deleted successfully.');
+        $this->loadUsers();
     }
 
     public function saveSettings() {
@@ -295,6 +438,11 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     public function setTab($tab) {
         $this->activeTab = $tab;
+
+        // Ensure data is loaded for the selected tab
+        if ($tab === 'users') {
+            $this->loadUsers();
+        }
     }
 
     public function confirmAction($actionType, $id, $message) {
@@ -309,8 +457,10 @@ new #[Layout('components.layouts.app')] class extends Component {
             $this->deleteRoom($this->confirmId);
         } elseif ($this->confirmActionType === 'deleteSubTenant' && $this->confirmId) {
             $this->deleteSubTenant($this->confirmId);
+        } elseif ($this->confirmActionType === 'deleteUser' && $this->confirmId) {
+            $this->deleteUser($this->confirmId);
         }
-        
+
         $this->showConfirmModal = false;
         $this->confirmActionType = '';
         $this->confirmId = null;
@@ -339,12 +489,21 @@ new #[Layout('components.layouts.app')] class extends Component {
             </div>
             
             <nav class="p-4 space-y-2">
-                <button wire:click="setTab('settings')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'settings' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
-                    Settings & Rooms
-                </button>
-                <button wire:click="setTab('subtenants')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'subtenants' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
-                    Sub-Tenants
-                </button>
+                @if($isSubTenant)
+                    <button wire:click="setTab('details')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'details' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                        Business Details
+                    </button>
+                @else
+                    <button wire:click="setTab('settings')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'settings' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                        Settings & Rooms
+                    </button>
+                    <button wire:click="setTab('users')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'users' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                        Users
+                    </button>
+                    <button wire:click="setTab('subtenants')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'subtenants' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
+                        Sub-Tenants
+                    </button>
+                @endif
                 <button wire:click="setTab('analytics')" class="w-full text-left px-4 py-3 text-sm font-semibold transition-all duration-150 rounded-lg {{ $activeTab === 'analytics' ? 'bg-[#FF4B4B]/10 text-[#FF4B4B]' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100' }}">
                     Analytics
                 </button>
@@ -380,9 +539,92 @@ new #[Layout('components.layouts.app')] class extends Component {
 
     <!-- Main Content Area -->
     <main class="flex-1 overflow-y-auto p-8 lg:p-12 relative animate-fade-in-up">
-        
+
         <!-- Tab Content Routing -->
-        @if($activeTab === 'settings')
+        @if($activeTab === 'details')
+            <div class="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
+                <div>
+                    <h2 class="text-3xl font-extrabold tracking-tight mb-2">Business Details</h2>
+                    <p class="text-gray-500">View your organization details and contract information.</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <!-- Business Information Card -->
+                    <div class="card p-8">
+                        <h3 class="text-xl font-bold mb-6 border-b border-gray-200 pb-4 text-gray-900">Organization Information</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Business Name</label>
+                                <p class="text-lg font-semibold text-gray-900 mt-1">{{ $tenant->name }}</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Domain</label>
+                                <p class="text-gray-700 mt-1">{{ $tenant->domain ?? 'Not set' }}</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Status</label>
+                                <p class="mt-1">
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold {{ $tenant->status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                        <span class="w-1.5 h-1.5 rounded-full {{ $tenant->status === 'Active' ? 'bg-green-500' : 'bg-yellow-500' }}"></span>
+                                        {{ $tenant->status }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Contract Details Card -->
+                    <div class="card p-8">
+                        <h3 class="text-xl font-bold mb-6 border-b border-gray-200 pb-4 text-gray-900">Contract Details</h3>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Contract Start</label>
+                                <p class="text-gray-700 mt-1">{{ $tenant->contract_start_date ? $tenant->contract_start_date->format('F j, Y') : 'Not set' }}</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Contract End</label>
+                                <p class="text-gray-700 mt-1">{{ $tenant->contract_end_date ? $tenant->contract_end_date->format('F j, Y') : 'Not set' }}</p>
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">Data Retention</label>
+                                <p class="text-gray-700 mt-1">{{ $tenant->data_retention_days ?? 180 }} days</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Section -->
+                <div class="card p-8">
+                    <h3 class="text-xl font-bold mb-6 border-b border-gray-200 pb-4 text-gray-900">Users</h3>
+                    @php $tenantUsers = $tenant->users()->withCount('visits')->get(); @endphp
+                    @if(count($tenantUsers) > 0)
+                        <div class="overflow-x-auto rounded-xl border border-gray-200 bg-white">
+                            <table class="data-grid w-full">
+                                <thead>
+                                    <tr>
+                                        <th class="text-left font-bold text-gray-900 bg-gray-50 uppercase text-xs tracking-wider border-b border-gray-200 p-4">Name</th>
+                                        <th class="text-left font-bold text-gray-900 bg-gray-50 uppercase text-xs tracking-wider border-b border-gray-200 p-4">Email</th>
+                                        <th class="text-center font-bold text-gray-900 bg-gray-50 uppercase text-xs tracking-wider border-b border-gray-200 p-4">Visits</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach($tenantUsers as $user)
+                                        <tr class="hover:bg-gray-50 transition-colors">
+                                            <td class="font-bold text-gray-900 p-4">{{ $user->name }}</td>
+                                            <td class="text-gray-600 p-4">{{ $user->email }}</td>
+                                            <td class="text-center font-bold text-gray-700 p-4">{{ $user->visits_count }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="text-gray-500 text-center py-8">No users assigned to this workspace.</div>
+                    @endif
+                </div>
+            </div>
+
+        @elseif($activeTab === 'settings')
             <div class="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
                 <div>
                     <h2 class="text-3xl font-extrabold tracking-tight mb-2">Facility Settings</h2>
@@ -657,6 +899,176 @@ new #[Layout('components.layouts.app')] class extends Component {
                 </div>
             </div>
 
+        @elseif($activeTab === 'users')
+            <div class="max-w-6xl mx-auto space-y-8 animate-fade-in-up" wire:key="users-tab">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-3xl font-extrabold tracking-tight mb-2 text-gray-900">User Management</h2>
+                        <p class="text-gray-500">Manage users within your organization.</p>
+                    </div>
+                    <button wire:click="openCreateUserModal" class="btn shrink-0">+ Add User</button>
+                </div>
+
+                @if(session()->has('user_message'))
+                    <div class="bg-green-100 border border-green-200 text-green-700 p-4 mb-6 animate-fade-in-up text-sm font-bold rounded-xl flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        {{ session('user_message') }}
+                    </div>
+                @endif
+
+                <div class="card p-0 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="data-grid w-full">
+                            <thead>
+                                <tr>
+                                    <th>User Details</th>
+                                    <th>Role</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody wire:key="users-tbody">
+                                @forelse($users as $user)
+                                    <tr class="group hover:bg-gray-50/50 transition-colors" wire:key="user-{{ $user->id }}">
+                                        <td>
+                                            <div class="font-bold text-gray-900">{{ $user->name }}</div>
+                                            <div class="text-sm text-gray-500">{{ $user->email }}</div>
+                                        </td>
+                                        <td>
+                                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-extrabold bg-gray-100 text-gray-800">
+                                                {{ $user->allTenantRoles->pluck('name')->join(', ') ?: 'No Role' }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center">
+                                            @if($user->is_active)
+                                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                                    Active
+                                                </span>
+                                            @else
+                                                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                                    Inactive
+                                                </span>
+                                            @endif
+                                        </td>
+                                        <td class="text-right">
+                                            <div class="flex items-center justify-end gap-2">
+                                                <button wire:click="openEditUserModal({{ $user->id }})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Edit</button>
+                                                @if(auth()->id() !== $user->id)
+                                                    <button wire:click="confirmAction('deleteUser', {{ $user->id }}, 'Are you sure you want to delete this user?')" class="text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">Delete</button>
+                                                @endif
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center py-16 text-gray-500 font-medium">
+                                            No users found. Create your first user to get started.
+                                        </td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create User Modal -->
+            @if($showCreateUserModal)
+                <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm animate-fade-in-up" wire:click.self="closeCreateUserModal">
+                    <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 m-4">
+                        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+                            <h3 class="text-xl font-extrabold text-gray-900">Add User</h3>
+                            <button wire:click="closeCreateUserModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <form wire:submit="createUser" class="p-8 space-y-6">
+                            <div class="space-y-4">
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Full Name <span class="text-[#FF4B4B]">*</span></label>
+                                    <input wire:model="newUser.name" type="text" class="input py-2" placeholder="John Doe">
+                                    @error('newUser.name') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Email Address <span class="text-[#FF4B4B]">*</span></label>
+                                    <input wire:model="newUser.email" type="email" class="input py-2" placeholder="john@company.com">
+                                    @error('newUser.email') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Password <span class="text-[#FF4B4B]">*</span></label>
+                                    <input wire:model="newUser.password" type="password" class="input py-2" placeholder="Minimum 8 characters">
+                                    @error('newUser.password') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Role <span class="text-[#FF4B4B]">*</span></label>
+                                    <select wire:model="newUser.role" class="input py-2 bg-white">
+                                        <option value="">-- Select Role --</option>
+                                        @foreach($roles as $role)
+                                            <option value="{{ $role->name }}">{{ $role->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('newUser.role') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                                <button type="button" wire:click="closeCreateUserModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">Cancel</button>
+                                <button type="submit" class="btn">Create User</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
+            <!-- Edit User Modal -->
+            @if($showEditUserModal)
+                <div class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 backdrop-blur-sm animate-fade-in-up" wire:click.self="closeEditUserModal">
+                    <div class="bg-white rounded-[24px] shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 m-4">
+                        <div class="px-8 py-6 border-b border-gray-100 flex justify-between items-center">
+                            <h3 class="text-xl font-extrabold text-gray-900">Edit User</h3>
+                            <button wire:click="closeEditUserModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
+                        </div>
+
+                        <form wire:submit="updateUser" class="p-8 space-y-6">
+                            <div class="space-y-4">
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Full Name <span class="text-[#FF4B4B]">*</span></label>
+                                    <input wire:model="editUserData.name" type="text" class="input py-2">
+                                    @error('editUserData.name') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Email Address <span class="text-[#FF4B4B]">*</span></label>
+                                    <input wire:model="editUserData.email" type="email" class="input py-2">
+                                    @error('editUserData.email') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="input-group mb-0">
+                                    <label class="text-sm font-bold text-gray-900 mb-2">Role <span class="text-[#FF4B4B]">*</span></label>
+                                    <select wire:model="editUserData.role" class="input py-2 bg-white">
+                                        <option value="">-- Select Role --</option>
+                                        @foreach($roles as $role)
+                                            <option value="{{ $role->name }}">{{ $role->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('editUserData.role') <span class="text-[#FF4B4B] text-xs font-bold block mt-1">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="flex items-center gap-3 pt-2">
+                                    <input wire:model="editUserData.is_active" id="editIsActive" type="checkbox" class="w-4 h-4 text-[#FF4B4B] border-gray-300 rounded focus:ring-[#FF4B4B]">
+                                    <label for="editIsActive" class="text-sm font-medium text-gray-900">Account Active</label>
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+                                <button type="button" wire:click="closeEditUserModal" class="px-5 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50 rounded-xl transition-colors">Cancel</button>
+                                <button type="submit" class="btn">Save Changes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            @endif
+
         @elseif($activeTab === 'subtenants')
             <div class="max-w-5xl mx-auto space-y-8 animate-fade-in-up">
                 <div>
@@ -666,7 +1078,8 @@ new #[Layout('components.layouts.app')] class extends Component {
                 
                 <div class="card p-0 overflow-hidden">
                     @if(session()->has('subtenant_message'))
-                        <div class="bg-green-900/30 border-b border-green-500/50 text-green-400 p-4 text-sm font-medium">
+                        <div class="bg-green-100 border-b border-green-200 text-green-700 p-4 mb-6 animate-fade-in-up text-sm font-bold rounded-xl flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
                             {{ session('subtenant_message') }}
                         </div>
                     @endif
