@@ -2,31 +2,38 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AccessPoint;
-use App\Models\Tenant;
+use App\Models\Entrance;
 use Illuminate\Http\Request;
 
 class KioskController extends Controller
 {
-    /**
-     * Show the kiosk mode interface
-     */
-    public function index(string $tenantSlug, string $accessPointUuid)
+    public function index(Request $request, string $entranceIdentifier)
     {
-        // Find tenant by slug
-        $tenant = Tenant::where('slug', $tenantSlug)->firstOrFail();
-
-        // Find access point by UUID and verify it belongs to the tenant and is in kiosk mode
-        $accessPoint = AccessPoint::where('uuid', $accessPointUuid)
-            ->where('tenant_id', $tenant->id)
-            ->where('is_kiosk_mode', true)
+        $entrance = Entrance::where('kiosk_identifier', $entranceIdentifier)
             ->where('is_active', true)
+            ->with(['building', 'kioskSetting'])
             ->firstOrFail();
 
-        // Render the kiosk Livewire component with the parameters
-        return view('livewire.kiosk.kiosk-mode', [
-            'tenant' => $tenant,
-            'accessPoint' => $accessPoint,
-        ])->layout('layouts.kiosk');
+        return view('kiosk', compact('entrance'));
+    }
+
+    public function checkIn(Request $request, string $entranceIdentifier)
+    {
+        $entrance = Entrance::where('kiosk_identifier', $entranceIdentifier)
+            ->where('is_active', true)
+            ->with(['building', 'kioskSetting'])
+            ->firstOrFail();
+
+        return view('kiosk-checkin', compact('entrance'));
+    }
+
+    public function checkOut(Request $request, string $entranceIdentifier)
+    {
+        $entrance = Entrance::where('kiosk_identifier', $entranceIdentifier)
+            ->where('is_active', true)
+            ->with(['building', 'kioskSetting'])
+            ->firstOrFail();
+
+        return view('kiosk-checkout', compact('entrance'));
     }
 }

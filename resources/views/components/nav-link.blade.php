@@ -1,5 +1,15 @@
-@props(['active' => false])
+@props(['active'])
 
-<a {{ $attributes->merge(['class' => $active ? 'inline-flex items-center px-1 pt-1 border-b-2 border-primary-500 text-sm font-medium text-gray-900' : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300']) }}>
+@php
+$classes = ($active ?? false)
+            ? 'inline-flex items-center px-1 pt-1 border-b-2 text-sm font-bold leading-5 focus:outline-none transition duration-150 ease-in-out'
+            : 'inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium leading-5 focus:outline-none transition duration-150 ease-in-out';
+$activeStyles = 'border-color: var(--primary); color: var(--text-primary);';
+$inactiveStyles = 'color: var(--text-secondary); border-color: transparent;';
+$activeHoverStyles = 'hover:color: var(--text-primary); hover:border-color: var(--border-light);';
+$styles = ($active ?? false) ? $activeStyles : $inactiveStyles . $activeHoverStyles;
+@endphp
+
+<a {{ $attributes->merge(['class' => $classes, 'style' => $styles]) }}>
     {{ $slot }}
 </a>

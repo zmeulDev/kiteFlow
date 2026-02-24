@@ -1,38 +1,31 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>KiteFlow Kiosk</title>
-    
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        primary: {
-                            50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd', 300: '#7dd3fc',
-                            400: '#38bdf8', 500: '#0ea5e9', 600: '#0284c7', 700: '#0369a1',
-                            800: '#075985', 900: '#0c4a6e',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    
-    @livewireStyles
-    @livewireScripts
-</head>
-<body class="font-sans antialiased h-full bg-gray-900">
-    <div class="min-h-screen flex items-center justify-center p-4">
-        {{ $slot }}
-    </div>
-</body>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+
+        <title>{{ $title ?? 'Visitor Check-in' }}</title>
+
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+        @stack('styles')
+    </head>
+    <body class="kiosk-body">
+        <div class="min-h-screen flex flex-col">
+            @if(isset($entrance) && $entrance->kioskSetting)
+                @if($entrance->kioskSetting->logo_path)
+                    <div class="text-center pt-8">
+                        <img src="{{ asset('storage/' . $entrance->kioskSetting->logo_path) }}" alt="Logo" class="h-16 mx-auto">
+                    </div>
+                @endif
+            @endif
+
+            <main class="flex-1 flex items-center justify-center p-6">
+                {{ $slot }}
+            </main>
+        </div>
+
+        @stack('scripts')
+    </body>
 </html>

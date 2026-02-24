@@ -2,90 +2,98 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Building;
+use App\Models\Entrance;
+use App\Models\KioskSetting;
+use App\Models\Setting;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
-    /**
-     * Seed the application's database.
-     *
-     * This seeder covers all business logic scenarios for KiteFlow:
-     * - Multi-tenant architecture with parent/child hierarchy
-     * - User roles and permissions (super-admin, admin, receptionist, user)
-     * - Facility management (buildings, zones, access points)
-     * - Visitor management (profiles, visits, documents, blacklist)
-     * - Meeting management (rooms, meetings, attendees, notifications)
-     * - Parking management (spots, records with various states)
-     * - Access control (logs for entry/exit tracking)
-     * - Activity logging (comprehensive audit trail)
-     * - Tenant settings (configuration per tenant)
-     */
     public function run(): void
     {
-        $this->command->info('Starting KiteFlow database seeding...');
+        // Create admin user
+        User::create([
+            'name' => 'Admin User',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'admin',
+            'is_active' => true,
+        ]);
 
-        // Step 1: Seed roles and permissions first
-        $this->call(RolesAndPermissionsSeeder::class);
+        // Create receptionist user
+        User::create([
+            'name' => 'Receptionist',
+            'email' => 'reception@example.com',
+            'password' => Hash::make('password'),
+            'role' => 'receptionist',
+            'is_active' => true,
+        ]);
 
-        // Step 2: Seed tenants (multi-tenant setup)
-        $this->call(TenantSeeder::class);
+        // Create buildings
+        $building1 = Building::create([
+            'name' => 'Main Building',
+            'address' => '123 Main Street',
+            'is_active' => true,
+        ]);
 
-        // Step 3: Seed users with different roles
-        $this->call(UserSeeder::class);
+        $building2 = Building::create([
+            'name' => 'Annex Building',
+            'address' => '456 Side Avenue',
+            'is_active' => true,
+        ]);
 
-        // Step 4: Seed tenant settings (configuration)
-        $this->call(TenantSettingSeeder::class);
+        // Create entrances for each building
+        $entrance1 = Entrance::create([
+            'building_id' => $building1->id,
+            'name' => 'Main Entrance',
+            'kiosk_identifier' => 'main-building-main',
+            'is_active' => true,
+        ]);
 
-        // Step 5: Seed facility management
-        $this->call(BuildingSeeder::class);
-        $this->call(ZoneSeeder::class);
-        $this->call(AccessPointSeeder::class);
+        $entrance2 = Entrance::create([
+            'building_id' => $building1->id,
+            'name' => 'Side Entrance',
+            'kiosk_identifier' => 'main-building-side',
+            'is_active' => true,
+        ]);
 
-        // Step 6: Seed meeting rooms
-        $this->call(MeetingRoomSeeder::class);
+        $entrance3 = Entrance::create([
+            'building_id' => $building2->id,
+            'name' => 'Front Entrance',
+            'kiosk_identifier' => 'annex-front',
+            'is_active' => true,
+        ]);
 
-        // Step 7: Seed visitor management
-        $this->call(VisitorSeeder::class);
-        $this->call(VisitorVisitSeeder::class);
-        $this->call(VisitorDocumentSeeder::class);
+        $entrance4 = Entrance::create([
+            'building_id' => $building2->id,
+            'name' => 'Back Entrance',
+            'kiosk_identifier' => 'annex-back',
+            'is_active' => true,
+        ]);
 
-        // Step 8: Seed meeting management
-        $this->call(MeetingSeeder::class);
-        $this->call(MeetingAttendeeSeeder::class);
-        $this->call(MeetingNotificationSeeder::class);
+        // Create kiosk settings for each entrance
+        foreach ([$entrance1, $entrance2, $entrance3, $entrance4] as $entrance) {
+            KioskSetting::create([
+                'entrance_id' => $entrance->id,
+                'welcome_message' => 'Welcome! Please check in below.',
+                'background_color' => '#ffffff',
+                'primary_color' => '#3b82f6',
+                'require_photo' => false,
+                'require_signature' => true,
+                'show_nda' => false,
+                'gdpr_text' => 'I consent to the collection and processing of my personal data for the purpose of visitor management, in accordance with the General Data Protection Regulation (GDPR). I understand that my data will be stored securely and used only for the purposes outlined in the privacy policy.',
+                'nda_text' => 'I agree to maintain the confidentiality of any proprietary information I may encounter during my visit. I will not disclose, copy, or use any such information without proper authorization.',
+            ]);
+        }
 
-        // Step 9: Seed parking management
-        $this->call(ParkingSeeder::class);
-
-        // Step 10: Seed access control
-        $this->call(AccessLogSeeder::class);
-
-        // Step 11: Seed activity logs
-        $this->call(ActivityLogSeeder::class);
-
-        $this->command->info('KiteFlow database seeding completed successfully!');
-        $this->command->newLine();
-        $this->command->info('Summary:');
-        $this->command->info('- Tenants: Active, suspended, inactive, trial, parent/child hierarchy');
-        $this->command->info('- Users: super-admin, admin, receptionist, user roles; active/inactive states');
-        $this->command->info('- Buildings: Multiple per tenant, active/inactive states');
-        $this->command->info('- Zones: Office, conference, lobby, secure, restricted, public types');
-        $this->command->info('- Access Points: Door, gate, kiosk; entry/exit directions; active/inactive');
-        $this->command->info('- Meeting Rooms: Various capacities and amenities');
-        $this->command->info('- Visitors: Regular and blacklisted states');
-        $this->command->info('- Visitor Visits: Checked-in, checked-out, cancelled; various badge types');
-        $this->command->info('- Visitor Documents: ID cards, passports, NDAs, photos, signatures');
-        $this->command->info('- Meetings: Scheduled, ongoing, completed, cancelled, recurring');
-        $this->command->info('- Meeting Types: In-person, virtual, hybrid');
-        $this->command->info('- Meeting Attendees: Users and visitors; required/optional; accepted/declined/tentative');
-        $this->command->info('- Meeting Notifications: Created, updated, cancelled, reminder, starting_soon');
-        $this->command->info('- Parking Spots: Standard, compact, large, EV, disabled, VIP; available/occupied/reserved');
-        $this->command->info('- Parking Records: Active, completed, paid states');
-        $this->command->info('- Access Logs: Entry/exit; granted/denied; various access methods');
-        $this->command->info('- Activity Logs: Login/logout, visitor actions, meeting actions, tenant updates');
-        $this->command->info('- Tenant Settings: Visitor, meeting, parking, access, notification configs');
+        // Create default settings
+        Setting::set('business_name', 'Acme Corporation');
+        Setting::set('business_address', '123 Business Street, City, Country');
+        Setting::set('business_phone', '+1 234 567 890');
+        Setting::set('business_email', 'info@acme.com');
+        Setting::set('data_retention_days', 90);
     }
 }

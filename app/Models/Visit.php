@@ -2,38 +2,39 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Visit extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'tenant_id',
         'visitor_id',
-        'meeting_room_id',
-        'host_user_id',
-        'scheduled_at',
-        'check_in_time',
-        'check_out_time',
+        'entrance_id',
+        'host_id',
+        'host_name',
+        'host_email',
         'purpose',
+        'check_in_at',
+        'check_out_at',
         'status',
-        'nda_signature',
-        'invite_code',
-        'qr_code_path',
+        'qr_code',
+        'gdpr_consent_at',
+        'nda_consent_at',
+        'signature',
+        'photo_path',
     ];
 
     protected function casts(): array
     {
         return [
-            'scheduled_at' => 'datetime',
-            'check_in_time' => 'datetime',
-            'check_out_time' => 'datetime',
+            'check_in_at' => 'datetime',
+            'check_out_at' => 'datetime',
+            'gdpr_consent_at' => 'datetime',
+            'nda_consent_at' => 'datetime',
         ];
-    }
-
-    public function tenant(): BelongsTo
-    {
-        return $this->belongsTo(Tenant::class);
     }
 
     public function visitor(): BelongsTo
@@ -41,13 +42,28 @@ class Visit extends Model
         return $this->belongsTo(Visitor::class);
     }
 
-    public function meetingRoom(): BelongsTo
+    public function entrance(): BelongsTo
     {
-        return $this->belongsTo(MeetingRoom::class);
+        return $this->belongsTo(Entrance::class);
     }
 
     public function host(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'host_user_id');
+        return $this->belongsTo(User::class, 'host_id');
+    }
+
+    public function isCheckedIn(): bool
+    {
+        return $this->status === 'checked_in';
+    }
+
+    public function isCheckedOut(): bool
+    {
+        return $this->status === 'checked_out';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
     }
 }
