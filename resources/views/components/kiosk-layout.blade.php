@@ -11,12 +11,14 @@
 
         @stack('styles')
     </head>
-    <body class="kiosk-body">
+    <body class="kiosk-body antialiased">
         <div class="min-h-screen flex flex-col">
             @if(isset($entrance) && $entrance->kioskSetting)
                 @if($entrance->kioskSetting->logo_path)
-                    <div class="text-center pt-8">
-                        <img src="{{ asset('storage/' . $entrance->kioskSetting->logo_path) }}" alt="Logo" class="h-16 mx-auto">
+                    <div class="text-center pt-10 pb-4">
+                        <div class="inline-flex items-center justify-center p-4 bg-surface rounded-2xl shadow-sm">
+                            <img src="{{ asset('storage/' . $entrance->kioskSetting->logo_path) }}" alt="Logo" class="h-16">
+                        </div>
                     </div>
                 @endif
             @endif

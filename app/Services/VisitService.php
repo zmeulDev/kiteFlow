@@ -69,6 +69,13 @@ class VisitService
         return Visit::where('qr_code', $qrCode)->first();
     }
 
+    public function findByCheckInCode(string $checkInCode): ?Visit
+    {
+        return Visit::where('check_in_code', strtoupper($checkInCode))
+            ->with(['visitor', 'host', 'entrance.building'])
+            ->first();
+    }
+
     public function getActiveVisits(?Entrance $entrance = null)
     {
         $query = Visit::with(['visitor', 'entrance.building'])

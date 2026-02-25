@@ -32,6 +32,11 @@ class Welcome extends Component
         $this->redirect(route('kiosk.welcome', $this->entrance->kiosk_identifier) . '?mode=qr');
     }
 
+    public function checkInWithCode(): void
+    {
+        $this->redirect(route('kiosk.check-in-code', $this->entrance->kiosk_identifier));
+    }
+
     public function render()
     {
         $mode = request()->get('mode', 'welcome');

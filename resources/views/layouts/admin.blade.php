@@ -20,6 +20,8 @@
             </main>
         </div>
 
+        <livewire:components.confirm-modal />
+
         @stack('scripts')
     </body>
 </html>

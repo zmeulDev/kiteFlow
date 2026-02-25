@@ -154,142 +154,141 @@
         </div>
     </div>
 
-
-
     <form wire:submit="save" class="company-edit-grid">
         {{-- Main Content Column --}}
         <div class="company-edit-main">
             {{-- Basic Information Card --}}
             <div class="company-edit-card company-edit-card--main">
-            <div class="company-edit-card-header">
-                <div class="company-edit-card-icon company-edit-card-icon--primary">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="company-edit-card-title">Basic Information</h3>
-                    <p class="company-edit-card-subtitle">Company details and contact information</p>
-                </div>
-            </div>
-            <div class="company-edit-card-body">
-                <div class="companies-form-grid">
-                    <div class="companies-form-field companies-form-field--full">
-                        <label class="companies-form-label">Company Name *</label>
-                        <input type="text" wire:model="name" class="companies-form-input" placeholder="Enter company name">
-                        @error('name') <p class="companies-form-error">{{ $message }}</p> @enderror
+                <div class="company-edit-card-header">
+                    <div class="company-edit-card-icon company-edit-card-icon--primary">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
                     </div>
-
-                    <div class="companies-form-field companies-form-field--full">
-                        <label class="companies-form-label">Address</label>
-                        <textarea wire:model="address" class="companies-form-input companies-form-textarea" rows="2" placeholder="Street address, city, postal code"></textarea>
-                    </div>
-
-                    <div class="companies-form-field">
-                        <label class="companies-form-label">Phone</label>
-                        <input type="text" wire:model="phone" class="companies-form-input" placeholder="+44 20 1234 5678">
-                    </div>
-
-                    <div class="companies-form-field">
-                        <label class="companies-form-label">Email</label>
-                        <input type="email" wire:model="email" class="companies-form-input" placeholder="contact@company.com">
-                        @error('email') <p class="companies-form-error">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div class="companies-form-field companies-form-field--full">
-                        <label class="companies-form-toggle">
-                            <input type="checkbox" wire:model="is_active" class="companies-form-checkbox">
-                            <span class="companies-form-toggle-label">
-                                <span class="companies-form-toggle-text">Active Status</span>
-                                <span class="companies-form-toggle-hint">Company will be available for selection in visits</span>
-                            </span>
-                        </label>
+                    <div>
+                        <h3 class="company-edit-card-title">Basic Information</h3>
+                        <p class="company-edit-card-subtitle">Company details and contact information</p>
                     </div>
                 </div>
-            </div>
-        </div>
+                <div class="company-edit-card-body">
+                    <div class="companies-form-grid">
+                        <div class="companies-form-field companies-form-field--full">
+                            <label class="companies-form-label">Company Name *</label>
+                            <input type="text" wire:model="name" class="companies-form-input" placeholder="Enter company name">
+                            @error('name') <p class="companies-form-error">{{ $message }}</p> @enderror
+                        </div>
 
-        {{-- Company Users Card - Moved back to Main Column --}}
-        <div class="company-edit-card company-edit-card--main">
-            <div class="company-edit-card-header">
-                <div class="company-edit-card-icon company-edit-card-icon--green">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="company-edit-card-title">Company Users</h3>
-                    <p class="company-edit-card-subtitle">{{ $companyUsers->count() }} user{{ $companyUsers->count() !== 1 ? 's' : '' }} assigned</p>
+                        <div class="companies-form-field companies-form-field--full">
+                            <label class="companies-form-label">Address</label>
+                            <textarea wire:model="address" class="companies-form-input companies-form-textarea" rows="2" placeholder="Street address, city, postal code"></textarea>
+                        </div>
+
+                        <div class="companies-form-field">
+                            <label class="companies-form-label">Phone</label>
+                            <input type="text" wire:model="phone" class="companies-form-input" placeholder="+44 20 1234 5678">
+                        </div>
+
+                        <div class="companies-form-field">
+                            <label class="companies-form-label">Email</label>
+                            <input type="email" wire:model="email" class="companies-form-input" placeholder="contact@company.com">
+                            @error('email') <p class="companies-form-error">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div class="companies-form-field companies-form-field--full">
+                            <label class="companies-form-toggle">
+                                <input type="checkbox" wire:model="is_active" class="companies-form-checkbox">
+                                <span class="companies-form-toggle-label">
+                                    <span class="companies-form-toggle-text">Active Status</span>
+                                    <span class="companies-form-toggle-hint">Company will be available for selection in visits</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="company-edit-card-body">
-                @if($companyUsers->count() > 0)
-                <div class="company-users-list">
-                    @foreach($companyUsers as $user)
-                    <div class="company-user-item" wire:key="user-{{ $user->id }}">
-                        <div class="company-user-info">
-                            <div class="company-user-name">
-                                {{ $user->name }}
-                                @if($user->id === $main_contact_user_id)
-                                <span class="company-user-main-badge">Main</span>
+
+            {{-- Company Users Card --}}
+            <div class="company-edit-card company-edit-card--main">
+                <div class="company-edit-card-header">
+                    <div class="company-edit-card-icon company-edit-card-icon--green">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="company-edit-card-title">Company Users</h3>
+                        <p class="company-edit-card-subtitle">{{ $companyUsers->count() }} user{{ $companyUsers->count() !== 1 ? 's' : '' }} assigned</p>
+                    </div>
+                </div>
+                <div class="company-edit-card-body">
+                    @if($companyUsers->count() > 0)
+                    <div class="company-users-list">
+                        @foreach($companyUsers as $user)
+                        <div class="company-user-item" wire:key="user-{{ $user->id }}">
+                            <div class="company-user-info">
+                                <div class="company-user-name">
+                                    {{ $user->name }}
+                                    @if($user->id === $main_contact_user_id)
+                                    <span class="company-user-main-badge">Main</span>
+                                    @endif
+                                </div>
+                                <div class="company-user-email">{{ $user->email }}</div>
+                            </div>
+                            <div class="company-user-meta">
+                                @if($user->role === 'admin')
+                                <span class="company-user-role company-user-role--admin">God Mode</span>
+                                @elseif($user->role === 'administrator')
+                                <span class="company-user-role company-user-role--admin">Administrator</span>
+                                @elseif($user->role === 'tenant')
+                                <span class="company-user-role company-user-role--receptionist">Tenant</span>
+                                @elseif($user->role === 'receptionist')
+                                <span class="company-user-role company-user-role--receptionist">Receptionist</span>
+                                @else
+                                <span class="company-user-role company-user-role--viewer">Viewer</span>
+                                @endif
+                                @if($user->is_active)
+                                <span class="company-user-status company-user-status--active">Active</span>
+                                @else
+                                <span class="company-user-status company-user-status--inactive">Inactive</span>
                                 @endif
                             </div>
-                            <div class="company-user-email">{{ $user->email }}</div>
+                            <button type="button" wire:click="editCompanyUser({{ $user->id }})" class="company-user-edit-btn">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                </svg>
+                                Edit
+                            </button>
                         </div>
-                        <div class="company-user-meta">
-                            @if($user->role === 'admin')
-                            <span class="company-user-role company-user-role--admin">God Mode</span>
-                            @elseif($user->role === 'administrator')
-                            <span class="company-user-role company-user-role--administrator">Administrator</span>
-                            @elseif($user->role === 'tenant')
-                            <span class="company-user-role company-user-role--tenant">Tenant</span>
-                            @elseif($user->role === 'receptionist')
-                            <span class="company-user-role company-user-role--receptionist">Receptionist</span>
-                            @else
-                            <span class="company-user-role company-user-role--viewer">Viewer</span>
-                            @endif
-                            @if($user->is_active)
-                            <span class="company-user-status company-user-status--active">Active</span>
-                            @else
-                            <span class="company-user-status company-user-status--inactive">Inactive</span>
-                            @endif
-                        </div>
-                        <button type="button" wire:click="editCompanyUser({{ $user->id }})" class="company-user-edit-btn">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                            Edit
-                        </button>
+                        @endforeach
                     </div>
-                    @endforeach
-                </div>
-                @else
-                <div class="company-users-empty">
-                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="9" cy="7" r="4"></circle>
-                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
-                    <p class="company-users-empty-text">No users assigned to this company yet.</p>
-                </div>
-                @endif
+                    @else
+                    <div class="company-users-empty">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                            <circle cx="9" cy="7" r="4"></circle>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                        </svg>
+                        <p class="company-users-empty-text">No users assigned to this company yet.</p>
+                    </div>
+                    @endif
 
-                <button type="button" wire:click="createCompanyUser" class="company-add-user-btn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    <span>Add User</span>
-                </button>
+                    <button type="button" wire:click="createCompanyUser" class="company-add-user-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        <span>Add User</span>
+                    </button>
+                </div>
             </div>
         </div>
-        </div>
+
         {{-- Sidebar Cards --}}
         <div class="company-edit-sidebar">
             {{-- Contract Details Card --}}
@@ -331,7 +330,7 @@
                         </svg>
                     </div>
                     <div>
-                        <h3 class="company-edit-card-title">Contact Person form</h3>
+                        <h3 class="company-edit-card-title">Contact Person</h3>
                         <p class="company-edit-card-subtitle">Select primary contact</p>
                     </div>
                 </div>

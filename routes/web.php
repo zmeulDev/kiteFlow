@@ -21,6 +21,8 @@ Route::get('/dashboard', function () {
 Route::prefix('kiosk/{entrance}')->name('kiosk.')->group(function () {
     Route::get('/', [KioskController::class, 'index'])->name('welcome');
     Route::get('/check-in', [KioskController::class, 'checkIn'])->name('checkin');
+    Route::get('/check-in-code', [KioskController::class, 'checkInCode'])->name('check-in-code');
+    Route::get('/scheduled-check-in/{visit}', [KioskController::class, 'scheduledCheckIn'])->name('scheduled-check-in');
     Route::get('/checkout', [KioskController::class, 'checkOut'])->name('checkout');
 });
 

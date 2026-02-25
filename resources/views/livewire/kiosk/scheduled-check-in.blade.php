@@ -1,5 +1,5 @@
 <div class="w-full max-w-2xl mx-auto kiosk-fade-in">
-    @if($step <= $totalSteps)
+    @if(!$checkedIn)
     <div class="card kiosk-card">
         <!-- Building & Entrance Info -->
         <div class="mb-8 p-5 building-info-card rounded-2xl">
@@ -21,6 +21,13 @@
             </div>
         </div>
 
+        <!-- Welcome Message -->
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold mb-2">Welcome, {{ $visit->visitor->first_name }}!</h2>
+            <p class="text-secondary">Please complete the check-in process for your visit with <strong class="text-primary">{{ $visit->host?->name ?? $visit->host_name }}</strong></p>
+        </div>
+
+        @if($totalSteps > 1)
         <!-- Progress Bar -->
         <div class="mb-10">
             <div class="flex justify-between items-center mb-3">
@@ -31,95 +38,9 @@
                 <div class="progress-bar-fill" style="width: {{ ($step / $totalSteps) * 100 }}%"></div>
             </div>
         </div>
+        @endif
 
         @if($step === 1)
-        <!-- Visitor Details -->
-        <div class="mb-8">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 icon-container icon-container--coral rounded-xl">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                    </svg>
-                </div>
-                <h2 class="text-2xl font-bold">Your Details</h2>
-            </div>
-            <div class="space-y-5">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="input-group">
-                        <label for="first_name" class="kiosk-label font-semibold text-primary">First Name <span class="text-error">*</span></label>
-                        <input type="text" wire:model="first_name" class="input kiosk-input" id="first_name" placeholder="Enter first name">
-                        @error('first_name') <p class="text-sm mt-2 text-error">{{ $message }}</p> @enderror
-                    </div>
-                    <div class="input-group">
-                        <label for="last_name" class="kiosk-label font-semibold text-primary">Last Name <span class="text-error">*</span></label>
-                        <input type="text" wire:model="last_name" class="input kiosk-input" id="last_name" placeholder="Enter last name">
-                        @error('last_name') <p class="text-sm mt-2 text-error">{{ $message }}</p> @enderror
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label for="email" class="kiosk-label font-semibold text-primary">Email</label>
-                    <input type="email" wire:model="email" class="input kiosk-input" id="email" placeholder="your@email.com">
-                </div>
-                <div class="input-group">
-                    <label for="phone" class="kiosk-label font-semibold text-primary">Phone</label>
-                    <input type="tel" wire:model="phone" class="input kiosk-input" id="phone" placeholder="+1 (555) 000-0000">
-                </div>
-                <div class="input-group">
-                    <label for="company_id" class="kiosk-label font-semibold text-primary">Company</label>
-                    <select wire:model="company_id" class="input kiosk-input" id="company_id">
-                        <option value="">Select company or add new below</option>
-                        @foreach($companies as $company)
-                        <option value="{{ $company->id }}">{{ $company->name }}</option>
-                        @endforeach
-                    </select>
-                </div>
-                @if(!$company_id)
-                <div class="input-group">
-                    <label for="new_company_name" class="kiosk-label font-semibold text-primary">Or Add New Company</label>
-                    <input type="text" wire:model="new_company_name" placeholder="Enter company name" class="input kiosk-input" id="new_company_name">
-                </div>
-                @endif
-            </div>
-        </div>
-        @endif
-
-        @if($step === 2)
-        <!-- Visit Details -->
-        <div class="mb-8">
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 icon-container icon-container--blue rounded-xl">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                </div>
-                <h2 class="text-2xl font-bold">Visit Details</h2>
-            </div>
-            <div class="space-y-5">
-                <div class="input-group">
-                    <label for="host_id" class="kiosk-label font-semibold text-primary">Host <span class="text-error">*</span></label>
-                    <select wire:model="host_id" class="input kiosk-input" id="host_id">
-                        <option value="">Select your host</option>
-                        @foreach($hosts as $host)
-                        <option value="{{ $host->id }}">{{ $host->name }}</option>
-                        @endforeach
-                    </select>
-                    @error('host_id') <p class="text-sm mt-2 text-error">{{ $message }}</p> @enderror
-                </div>
-                <div class="input-group">
-                    <label for="purpose" class="kiosk-label font-semibold text-primary">Purpose of Visit <span class="text-error">*</span></label>
-                    <select wire:model="purpose" class="input kiosk-input" id="purpose">
-                        <option value="">Select purpose</option>
-                        @foreach($purposes as $key => $label)
-                        <option value="{{ $key }}">{{ $label }}</option>
-                        @endforeach
-                    </select>
-                    @error('purpose') <p class="text-sm mt-2 text-error">{{ $message }}</p> @enderror
-                </div>
-            </div>
-        </div>
-        @endif
-
-        @if($step === 3)
         <!-- Consent -->
         <div class="mb-8">
             <div class="flex items-center gap-3 mb-6">
@@ -136,19 +57,19 @@
                         <input type="checkbox" wire:model="gdpr_consent" class="checkbox kiosk-checkbox mt-1 flex-shrink-0" id="gdpr_consent">
                         <div>
                             <label for="gdpr_consent" class="font-semibold text-primary cursor-pointer">I agree to the GDPR terms <span class="text-error">*</span></label>
-                            <p class="text-secondary mt-1 text-sm leading-relaxed">{{ $entrance->kioskSetting?->gdpr_text ?? 'I consent to the collection and processing of my personal data for the purpose of this visit.' }}</p>
+                            <p class="text-secondary mt-1 text-sm leading-relaxed">{{ $kioskSetting?->gdpr_text ?? 'I consent to the collection and processing of my personal data.' }}</p>
                         </div>
                     </div>
                     @error('gdpr_consent') <p class="text-sm mt-3 text-error ml-10">{{ $message }}</p> @enderror
                 </div>
 
-                @if($entrance->kioskSetting?->show_nda)
+                @if($kioskSetting?->show_nda)
                 <div class="kiosk-consent-card">
                     <div class="flex items-start gap-4">
                         <input type="checkbox" wire:model="nda_consent" class="checkbox kiosk-checkbox mt-1 flex-shrink-0" id="nda_consent">
                         <div>
                             <label for="nda_consent" class="font-semibold text-primary cursor-pointer">I agree to the NDA terms <span class="text-error">*</span></label>
-                            <p class="text-secondary mt-1 text-sm leading-relaxed">{{ $entrance->kioskSetting?->nda_text ?? 'I agree to maintain confidentiality of any proprietary information I may encounter during this visit.' }}</p>
+                            <p class="text-secondary mt-1 text-sm leading-relaxed">{{ $kioskSetting?->nda_text ?? 'I agree to maintain confidentiality.' }}</p>
                         </div>
                     </div>
                     @error('nda_consent') <p class="text-sm mt-3 text-error ml-10">{{ $message }}</p> @enderror
@@ -158,7 +79,7 @@
         </div>
         @endif
 
-        @if($step === 4 && ($entrance->kioskSetting?->require_signature || $entrance->kioskSetting?->require_photo))
+        @if($step === 2 && ($kioskSetting?->require_signature || $kioskSetting?->require_photo))
         <!-- Signature -->
         <div class="mb-8">
             <div class="flex items-center gap-3 mb-6">
@@ -277,7 +198,7 @@
                 Back
             </button>
             @else
-            <a href="{{ route('kiosk.welcome', $entrance->kiosk_identifier) }}" class="btn btn-outline kiosk-btn">Cancel</a>
+            <a href="{{ route('kiosk.check-in-code', $entrance->kiosk_identifier) }}" class="btn btn-outline kiosk-btn">Cancel</a>
             @endif
 
             @if($step < $totalSteps)
@@ -300,30 +221,30 @@
     @else
     <!-- Success -->
     <div class="card kiosk-card text-center">
-        <div class="kiosk-success-icon rounded-full icon-container icon-container--green flex items-center justify-center">
-            <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="kiosk-success-icon w-20 h-20 mx-auto mb-4 icon-container icon-container--green rounded-full flex items-center justify-center">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>
             </svg>
         </div>
         <h2 class="text-3xl font-bold mb-3">Check-in Complete!</h2>
-        <p class="text-lg text-secondary mb-8">Thank you, {{ $currentVisit->visitor->first_name }}! You're all set.</p>
+        <p class="text-lg text-secondary mb-8">Thank you, {{ $visit->visitor->first_name }}! You're all set.</p>
 
         <div class="detail-card mb-8">
             <div class="kiosk-detail-row">
                 <span class="font-semibold text-secondary">Host</span>
-                <span class="font-medium text-primary">{{ $currentVisit->host?->name ?? $currentVisit->host_name }}</span>
+                <span class="font-medium text-primary">{{ $visit->host?->name ?? $visit->host_name }}</span>
             </div>
             <div class="kiosk-detail-row">
                 <span class="font-semibold text-secondary">Purpose</span>
-                <span class="font-medium text-primary">{{ $currentVisit->purpose }}</span>
+                <span class="font-medium text-primary">{{ $visit->purpose ?? 'Not specified' }}</span>
             </div>
             <div class="kiosk-detail-row">
                 <span class="font-semibold text-secondary">Location</span>
-                <span class="font-medium text-primary">{{ $currentVisit->entrance->name }}</span>
+                <span class="font-medium text-primary">{{ $visit->entrance->name }}</span>
             </div>
             <div class="kiosk-detail-row">
                 <span class="font-semibold text-secondary">Building</span>
-                <span class="font-medium text-primary">{{ $currentVisit->entrance->building->name }}</span>
+                <span class="font-medium text-primary">{{ $visit->entrance->building->name }}</span>
             </div>
         </div>
 

@@ -1,8 +1,8 @@
 <div class="max-w-lg mx-auto py-6">
     @if($completed)
     <div class="card text-center">
-        <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-            <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="w-16 h-16 mx-auto mb-4 icon-container icon-container--green">
+            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
             </svg>
         </div>
@@ -39,12 +39,12 @@
                 <div class="input-group">
                     <x-input-label for="mobile_first_name" value="First Name *" />
                     <input type="text" wire:model="first_name" class="input" id="mobile_first_name">
-                    @error('first_name') <p class="text-xs" style="color: #DC2626;">{{ $message }}</p> @enderror
+                    @error('first_name') <p class="text-xs text-error">{{ $message }}</p> @enderror
                 </div>
                 <div class="input-group">
                     <x-input-label for="mobile_last_name" value="Last Name *" />
                     <input type="text" wire:model="last_name" class="input" id="mobile_last_name">
-                    @error('last_name') <p class="text-xs" style="color: #DC2626;">{{ $message }}</p> @enderror
+                    @error('last_name') <p class="text-xs text-error">{{ $message }}</p> @enderror
                 </div>
             </div>
             <div class="input-group">
@@ -79,7 +79,7 @@
             <div class="input-group">
                 <x-input-label for="mobile_host_name" value="Host Name *" />
                 <input type="text" wire:model="host_name" class="input" id="mobile_host_name">
-                @error('host_name') <p class="text-xs" style="color: #DC2626;">{{ $message }}</p> @enderror
+                @error('host_name') <p class="text-xs text-error">{{ $message }}</p> @enderror
             </div>
             <div class="input-group">
                 <x-input-label for="mobile_host_email" value="Host Email" />
@@ -101,7 +101,7 @@
                     <input type="checkbox" wire:model="gdpr_consent" class="checkbox">
                     <span class="ml-2 text-sm">I agree *</span>
                 </label>
-                @error('gdpr_consent') <p class="text-xs" style="color: #DC2626;">{{ $message }}</p> @enderror
+                @error('gdpr_consent') <p class="text-xs text-error">{{ $message }}</p> @enderror
             </div>
             @if($kioskSetting?->show_nda)
             <div class="p-3 bg-main rounded-lg">
@@ -110,7 +110,7 @@
                     <input type="checkbox" wire:model="nda_consent" class="checkbox">
                     <span class="ml-2 text-sm">I agree *</span>
                 </label>
-                @error('nda_consent') <p class="text-xs" style="color: #DC2626;">{{ $message }}</p> @enderror
+                @error('nda_consent') <p class="text-xs text-error">{{ $message }}</p> @enderror
             </div>
             @endif
         </div>
@@ -147,7 +147,7 @@
             @if($step < 4)
             <button wire:click="nextStep" class="btn">Next</button>
             @else
-            <button wire:click="submit" class="btn" style="background-color: #16a34a;">Complete</button>
+            <button wire:click="submit" class="btn btn-success">Complete</button>
             @endif
         </div>
     </div>
