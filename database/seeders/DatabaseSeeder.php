@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Building;
+use App\Models\Company;
 use App\Models\Entrance;
 use App\Models\KioskSetting;
 use App\Models\Setting;
@@ -14,6 +15,34 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Create companies
+        $acmeCompany = Company::create([
+            'name' => 'Acme Corporation',
+            'address' => '123 Business Street, City, Country',
+            'phone' => '+1 234 567 890',
+            'email' => 'info@acme.com',
+            'contact_person' => 'John Smith',
+            'is_active' => true,
+        ]);
+
+        $techCompany = Company::create([
+            'name' => 'Tech Solutions Ltd',
+            'address' => '456 Innovation Avenue, Tech City',
+            'phone' => '+1 555 123 4567',
+            'email' => 'contact@techsolutions.com',
+            'contact_person' => 'Jane Doe',
+            'is_active' => true,
+        ]);
+
+        $globalCompany = Company::create([
+            'name' => 'Global Services Inc',
+            'address' => '789 Enterprise Road, Metro City',
+            'phone' => '+1 888 999 0000',
+            'email' => 'hello@globalservices.io',
+            'contact_person' => 'Bob Johnson',
+            'is_active' => true,
+        ]);
+
         // Create admin user
         User::create([
             'name' => 'Admin User',
@@ -21,6 +50,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'admin',
             'is_active' => true,
+            'company_id' => $acmeCompany->id,
         ]);
 
         // Create receptionist user
@@ -30,6 +60,7 @@ class DatabaseSeeder extends Seeder
             'password' => Hash::make('password'),
             'role' => 'receptionist',
             'is_active' => true,
+            'company_id' => $acmeCompany->id,
         ]);
 
         // Create buildings

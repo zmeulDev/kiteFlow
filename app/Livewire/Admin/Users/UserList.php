@@ -15,23 +15,30 @@ class UserList extends Component
 
     public string $search = '';
     public string $role_filter = '';
+    public ?int $company_filter = null;
     public bool $showModal = false;
     public ?int $editingUserId = null;
 
     public string $name = '';
     public string $email = '';
+    public string $phone = '';
     public string $password = '';
     public string $role = 'viewer';
     public bool $is_active = true;
+    public ?int $company_id = null;
+    public string $notes = '';
 
     protected function rules(): array
     {
         $rules = [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email',
+            'phone' => 'nullable|string|max:50',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,receptionist,viewer',
+            'role' => 'required|in:admin,administrator,tenant,receptionist,viewer',
             'is_active' => 'boolean',
+            'company_id' => 'nullable|exists:companies,id',
+            'notes' => 'nullable|string|max:1000',
         ];
 
         if ($this->editingUserId) {
@@ -59,8 +66,11 @@ class UserList extends Component
         $this->editingUserId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
+        $this->phone = $user->phone ?? '';
         $this->role = $user->role;
         $this->is_active = $user->is_active;
+        $this->company_id = $user->company_id;
+        $this->notes = $user->notes ?? '';
         $this->password = '';
         $this->showModal = true;
     }
@@ -74,8 +84,11 @@ class UserList extends Component
             $data = [
                 'name' => $this->name,
                 'email' => $this->email,
+                'phone' => $this->phone ?: null,
                 'role' => $this->role,
                 'is_active' => $this->is_active,
+                'company_id' => $this->company_id,
+                'notes' => $this->notes ?: null,
             ];
             if ($this->password) {
                 $data['password'] = bcrypt($this->password);
@@ -87,8 +100,11 @@ class UserList extends Component
                 'name' => $this->name,
                 'email' => $this->email,
                 'password' => bcrypt($this->password),
+                'phone' => $this->phone ?: null,
                 'role' => $this->role,
                 'is_active' => $this->is_active,
+                'company_id' => $this->company_id,
+                'notes' => $this->notes ?: null,
             ]);
             session()->flash('message', 'User created successfully.');
         }
@@ -138,17 +154,22 @@ class UserList extends Component
         $this->editingUserId = null;
         $this->name = '';
         $this->email = '';
+        $this->phone = '';
         $this->password = '';
         $this->role = 'viewer';
         $this->is_active = true;
+        $this->company_id = null;
+        $this->notes = '';
     }
 
     public function render()
     {
         $users = User::query()
+            ->with('company')
             ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
                 ->orWhere('email', 'like', "%{$this->search}%"))
             ->when($this->role_filter, fn($q) => $q->where('role', $this->role_filter))
+            ->when($this->company_filter, fn($q) => $q->where('company_id', $this->company_filter))
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
@@ -157,11 +178,14 @@ class UserList extends Component
         $activeUsers = User::where('is_active', true)->count();
         $adminUsers = User::where('role', 'admin')->count();
 
+        $companies = \App\Models\Company::where('is_active', true)->orderBy('name')->get();
+
         return view('livewire.admin.users.user-list', compact(
             'users',
             'totalUsers',
             'activeUsers',
-            'adminUsers'
+            'adminUsers',
+            'companies'
         ));
     }
 }

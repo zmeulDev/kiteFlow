@@ -85,9 +85,19 @@
             <div class="users-filters-select">
                 <select wire:model.live="role_filter">
                     <option value="">All Roles</option>
-                    <option value="admin">Admin</option>
+                    <option value="admin">God Mode</option>
+                    <option value="administrator">Administrator</option>
+                    <option value="tenant">Tenant</option>
                     <option value="receptionist">Receptionist</option>
                     <option value="viewer">Viewer</option>
+                </select>
+            </div>
+            <div class="users-filters-select">
+                <select wire:model.live="company_filter">
+                    <option value="">All Companies</option>
+                    @foreach($companies as $company)
+                        <option value="{{ $company->id }}">{{ $company->name }}</option>
+                    @endforeach
                 </select>
             </div>
             <button wire:click="createUser" class="users-add-btn">
@@ -116,6 +126,15 @@
                         @endif
                     </div>
                     <div class="user-email">{{ $user->email }}</div>
+                    @if($user->company)
+                    <div class="user-company">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                        {{ $user->company->name }}
+                    </div>
+                    @endif
                 </div>
             </div>
 
@@ -125,7 +144,21 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
-                    Admin
+                    God Mode
+                </span>
+                @elseif($user->role === 'administrator')
+                <span class="user-role-badge user-role-badge--administrator">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Administrator
+                </span>
+                @elseif($user->role === 'tenant')
+                <span class="user-role-badge user-role-badge--tenant">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    Tenant
                 </span>
                 @elseif($user->role === 'receptionist')
                 <span class="user-role-badge user-role-badge--receptionist">
@@ -231,6 +264,12 @@
                     </div>
 
                     <div class="users-form-field">
+                        <label class="users-form-label">Phone Number</label>
+                        <input type="tel" wire:model="phone" class="users-form-input" placeholder="+1 (555) 123-4567">
+                        @error('phone') <p class="users-form-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="users-form-field">
                         <label class="users-form-label">{{ $editingUserId ? 'New Password' : 'Password *' }}</label>
                         <input type="password" wire:model="password" class="users-form-input" placeholder="{{ $editingUserId ? 'Leave blank to keep current' : 'Minimum 8 characters' }}">
                         @error('password') <p class="users-form-error">{{ $message }}</p> @enderror
@@ -239,11 +278,30 @@
                     <div class="users-form-field">
                         <label class="users-form-label">Role *</label>
                         <select wire:model="role" class="users-form-input">
-                            <option value="admin">Admin</option>
+                            <option value="admin">God Mode</option>
+                            <option value="administrator">Administrator</option>
+                            <option value="tenant">Tenant</option>
                             <option value="receptionist">Receptionist</option>
                             <option value="viewer">Viewer</option>
                         </select>
                         @error('role') <p class="users-form-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="users-form-field">
+                        <label class="users-form-label">Company</label>
+                        <select wire:model="company_id" class="users-form-input">
+                            <option value="">Select a company</option>
+                            @foreach($companies as $company)
+                                <option value="{{ $company->id }}">{{ $company->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('company_id') <p class="users-form-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="users-form-field users-form-field--full">
+                        <label class="users-form-label">Notes</label>
+                        <textarea wire:model="notes" class="users-form-input users-form-textarea" rows="3" placeholder="Additional notes about this user..."></textarea>
+                        @error('notes') <p class="users-form-error">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="users-form-field users-form-field--full">

@@ -3,8 +3,11 @@
 namespace App\Livewire\Admin\Visits;
 
 use App\Models\Building;
+use App\Models\Company;
 use App\Models\Entrance;
+use App\Models\User;
 use App\Models\Visit;
+use App\Services\VisitSchedulingService;
 use App\Services\VisitService;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
@@ -26,6 +29,37 @@ class VisitList extends Component
     public bool $showModal = false;
     public ?int $editingVisitId = null;
 
+    // Scheduling modal properties
+    public bool $showScheduleModal = false;
+    public ?int $schedule_company_id = null;
+    public ?int $schedule_host_id = null;
+    public string $schedule_first_name = '';
+    public string $schedule_last_name = '';
+    public string $schedule_email = '';
+    public string $schedule_phone = '';
+    public ?int $schedule_visitor_company_id = null;
+    public ?int $schedule_entrance_id = null;
+    public string $schedule_purpose = '';
+    public string $schedule_date = '';
+    public string $schedule_time = '';
+
+    protected function rules(): array
+    {
+        return [
+            'schedule_company_id' => 'required|exists:companies,id',
+            'schedule_host_id' => 'nullable|exists:users,id',
+            'schedule_first_name' => 'required|string|max:255',
+            'schedule_last_name' => 'required|string|max:255',
+            'schedule_email' => 'required|email|max:255',
+            'schedule_phone' => 'nullable|string|max:50',
+            'schedule_visitor_company_id' => 'nullable|exists:companies,id',
+            'schedule_entrance_id' => 'required|exists:entrances,id',
+            'schedule_purpose' => 'nullable|string|max:255',
+            'schedule_date' => 'required|date|after_or_equal:today',
+            'schedule_time' => 'required',
+        ];
+    }
+
     public function updatedSearch(): void
     {
         $this->resetPage();
@@ -42,6 +76,12 @@ class VisitList extends Component
         $this->resetPage();
     }
 
+    public function updatedScheduleCompanyId(): void
+    {
+        // Reset host when company changes
+        $this->schedule_host_id = null;
+    }
+
     public function editVisit(int $visitId): void
     {
         $this->editingVisitId = $visitId;
@@ -54,11 +94,50 @@ class VisitList extends Component
         $this->editingVisitId = null;
     }
 
+    public function openScheduleModal(): void
+    {
+        $this->resetScheduleForm();
+        $this->showScheduleModal = true;
+    }
+
+    public function closeScheduleModal(): void
+    {
+        $this->showScheduleModal = false;
+        $this->resetScheduleForm();
+    }
+
+    public function resetScheduleForm(): void
+    {
+        $this->schedule_company_id = null;
+        $this->schedule_host_id = null;
+        $this->schedule_first_name = '';
+        $this->schedule_last_name = '';
+        $this->schedule_email = '';
+        $this->schedule_phone = '';
+        $this->schedule_visitor_company_id = null;
+        $this->schedule_entrance_id = null;
+        $this->schedule_purpose = '';
+        $this->schedule_date = '';
+        $this->schedule_time = '';
+        $this->resetErrorBag();
+    }
+
     public function getEditingVisitProperty(): ?Visit
     {
         return $this->editingVisitId
             ? Visit::with(['visitor.company', 'entrance.building', 'host'])->find($this->editingVisitId)
             : null;
+    }
+
+    public function getHostUsersProperty()
+    {
+        if (!$this->schedule_company_id) {
+            return collect();
+        }
+        return User::where('company_id', $this->schedule_company_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
     }
 
     #[On('confirmCheckOut')]
@@ -123,6 +202,40 @@ class VisitList extends Component
         session()->flash('message', 'Visitor checked out successfully.');
     }
 
+    public function scheduleVisit(VisitSchedulingService $schedulingService): void
+    {
+        $this->validate();
+
+        $entrance = Entrance::findOrFail($this->schedule_entrance_id);
+        $host = $this->schedule_host_id ? User::find($this->schedule_host_id) : null;
+        $visitorCompany = $this->schedule_visitor_company_id ? Company::find($this->schedule_visitor_company_id) : null;
+
+        $scheduledAt = \Carbon\Carbon::parse("{$this->schedule_date} {$this->schedule_time}");
+
+        $visitorData = [
+            'first_name' => $this->schedule_first_name,
+            'last_name' => $this->schedule_last_name,
+            'email' => $this->schedule_email,
+            'phone' => $this->schedule_phone ?: null,
+        ];
+
+        $visitData = [
+            'purpose' => $this->schedule_purpose ?: null,
+            'scheduled_at' => $scheduledAt,
+        ];
+
+        $visit = $schedulingService->scheduleVisit(
+            $visitorData,
+            $visitData,
+            $entrance,
+            $host,
+            $visitorCompany
+        );
+
+        session()->flash('message', "Visit scheduled successfully. Check-in code: {$visit->check_in_code}");
+        $this->closeScheduleModal();
+    }
+
     public function render()
     {
         $visits = Visit::with(['visitor.company', 'entrance.building', 'host'])
@@ -133,7 +246,8 @@ class VisitList extends Component
                         ->orWhere('email', 'like', "%{$this->search}%");
                 })->orWhereHas('host', function ($q) {
                     $q->where('name', 'like', "%{$this->search}%");
-                })->orWhere('host_name', 'like', "%{$this->search}%");
+                })->orWhere('host_name', 'like', "%{$this->search}%")
+                  ->orWhere('check_in_code', 'like', "%{$this->search}%");
             })
             ->when($this->status_filter, fn($q) => $q->where('status', $this->status_filter))
             ->when($this->building_filter, function ($q) {
@@ -156,7 +270,18 @@ class VisitList extends Component
         }
 
         $editingVisit = $this->editingVisit;
+        $hostUsers = $this->hostUsers;
+        $companies = Company::where('is_active', true)->orderBy('name')->get();
+        $allEntrances = Entrance::with('building')->where('is_active', true)->orderBy('name')->get();
 
-        return view('livewire.admin.visits.visit-list', compact('visits', 'buildings', 'entrances', 'editingVisit'));
+        return view('livewire.admin.visits.visit-list', compact(
+            'visits',
+            'buildings',
+            'entrances',
+            'editingVisit',
+            'hostUsers',
+            'companies',
+            'allEntrances'
+        ));
     }
 }

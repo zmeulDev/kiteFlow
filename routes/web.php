@@ -39,6 +39,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
         Route::livewire('/gdpr', \App\Livewire\Admin\Settings\GdprSettings::class)->name('gdpr');
         Route::livewire('/nda', \App\Livewire\Admin\Settings\NdaSettings::class)->name('nda');
         Route::livewire('/retention', \App\Livewire\Admin\Settings\DataRetention::class)->name('retention');
+        Route::livewire('/rbac', \App\Livewire\Admin\Settings\RolePermissions::class)->name('rbac');
     });
 
     // Users management
@@ -46,6 +47,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 
     // Companies management
     Route::livewire('/companies', \App\Livewire\Admin\Companies\CompanyList::class)->name('companies');
+    Route::livewire('/companies/{company}/edit', \App\Livewire\Admin\Companies\CompanyEdit::class)->name('companies.edit');
 
     // Buildings management
     Route::livewire('/buildings', \App\Livewire\Admin\Buildings\BuildingList::class)->name('buildings');

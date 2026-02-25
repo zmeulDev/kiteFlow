@@ -21,6 +21,8 @@ class Visit extends Model
         'check_out_at',
         'status',
         'qr_code',
+        'check_in_code',
+        'scheduled_at',
         'gdpr_consent_at',
         'nda_consent_at',
         'signature',
@@ -32,6 +34,7 @@ class Visit extends Model
         return [
             'check_in_at' => 'datetime',
             'check_out_at' => 'datetime',
+            'scheduled_at' => 'datetime',
             'gdpr_consent_at' => 'datetime',
             'nda_consent_at' => 'datetime',
         ];
@@ -65,5 +68,10 @@ class Visit extends Model
     public function isPending(): bool
     {
         return $this->status === 'pending';
+    }
+
+    public function isScheduled(): bool
+    {
+        return $this->scheduled_at !== null;
     }
 }
