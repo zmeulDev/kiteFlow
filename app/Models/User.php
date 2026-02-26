@@ -62,6 +62,17 @@ class User extends Authenticatable
         return $this->role === 'viewer';
     }
 
+    public static function getRoles(): array
+    {
+        return [
+            'admin' => 'System Administrator',
+            'administrator' => 'Company Administrator',
+            'tenant' => 'Location Administrator',
+            'receptionist' => 'Receptionist',
+            'viewer' => 'Employee'
+        ];
+    }
+
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);

@@ -69,4 +69,74 @@
             </div>
         </form>
     </div>
+
+    {{-- Associated Users Card --}}
+    @if(auth()->user()->company_id)
+    <div class="settings-card mt-8">
+        <div class="settings-card-header !pb-4 !border-b !border-gray-200 dark:!border-gray-700">
+            <div>
+                <h3 class="settings-card-title">Associated Users</h3>
+                <p class="settings-card-description">Users belonging to your company</p>
+            </div>
+            <a href="{{ route('admin.users') }}" class="settings-btn settings-btn--outline text-sm">
+                Manage Users
+            </a>
+        </div>
+        
+        <div class="settings-card-body p-0">
+            @if($businessUsers->count() > 0)
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                                <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                            @foreach($businessUsers as $user)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                <td class="px-6 py-4">
+                                    <div class="flex items-center">
+                                        <div class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-xs mr-3">
+                                            {{ collect(explode(' ', $user->name))->map(fn($w) => substr($w, 0, 1))->take(2)->join('') }}
+                                        </div>
+                                        <div>
+                                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->name }}</div>
+                                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $user->email }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+                                        {{ \App\Models\User::getRoles()[$user->role] ?? ucfirst($user->role) }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $user->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }}">
+                                        {{ $user->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @else
+                <div class="p-6 text-center text-gray-500 dark:text-gray-400">
+                    No users currently associated with your company.
+                </div>
+            @endif
+        </div>
+    </div>
+    @else
+    <div class="settings-card mt-8">
+        <div class="p-6 text-center text-gray-500 dark:text-gray-400">
+            You are a global System Administrator not bound to a specific company. 
+            <br>
+            <a href="{{ route('admin.companies') }}" class="text-blue-600 hover:underline mt-2 inline-block">Manage All Companies</a>
+        </div>
+    </div>
+    @endif
 </div>

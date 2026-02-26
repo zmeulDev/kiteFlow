@@ -7,6 +7,9 @@
 
         <title>@yield('title', 'Admin') - {{ config('app.name', 'Visitor Tracker') }}</title>
 
+        <!-- Flatpickr CSS -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body>
@@ -22,6 +25,9 @@
 
         <livewire:components.confirm-modal />
 
+        <!-- Flatpickr JS -->
+        <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+        
         @stack('scripts')
     </body>
 </html>

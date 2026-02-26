@@ -27,21 +27,36 @@ class Dashboard extends Component
         $this->loadStats();
     }
 
+    protected function getScopedVisitQuery()
+    {
+        $query = Visit::query();
+        if (!auth()->user()->isAdmin()) {
+            if (auth()->user()->role === 'viewer') {
+                $query->where('host_id', auth()->id());
+            } else {
+                $query->whereHas('host', function ($q) {
+                    $q->where('company_id', auth()->user()->company_id);
+                });
+            }
+        }
+        return $query;
+    }
+
     protected function loadStats(): void
     {
         // Today's stats
-        $this->todayVisits = Visit::whereDate('check_in_at', today())->count();
-        $this->activeVisits = Visit::where('status', 'checked_in')->count();
-        $this->totalVisitors = Visit::whereDate('check_in_at', today())
+        $this->todayVisits = $this->getScopedVisitQuery()->whereDate('check_in_at', today())->count();
+        $this->activeVisits = $this->getScopedVisitQuery()->where('status', 'checked_in')->count();
+        $this->totalVisitors = $this->getScopedVisitQuery()->whereDate('check_in_at', today())
             ->distinct('visitor_id')
             ->count('visitor_id');
-        $this->checkedOutToday = Visit::where('status', 'checked_out')
+        $this->checkedOutToday = $this->getScopedVisitQuery()->where('status', 'checked_out')
             ->whereDate('check_out_at', today())
             ->count();
 
         // Calculate trends (comparison to yesterday)
-        $yesterdayVisits = Visit::whereDate('check_in_at', Carbon::yesterday())->count();
-        $yesterdayVisitors = Visit::whereDate('check_in_at', Carbon::yesterday())
+        $yesterdayVisits = $this->getScopedVisitQuery()->whereDate('check_in_at', Carbon::yesterday())->count();
+        $yesterdayVisitors = $this->getScopedVisitQuery()->whereDate('check_in_at', Carbon::yesterday())
             ->distinct('visitor_id')
             ->count('visitor_id');
 
@@ -54,7 +69,7 @@ class Dashboard extends Component
         }
 
         // Find peak hour today
-        $peakHourData = Visit::whereDate('check_in_at', today())
+        $peakHourData = $this->getScopedVisitQuery()->whereDate('check_in_at', today())
             ->selectRaw("strftime('%H', check_in_at) as hour, COUNT(*) as count")
             ->whereNotNull('check_in_at')
             ->groupBy('hour')
@@ -68,7 +83,7 @@ class Dashboard extends Component
 
     public function render()
     {
-        $recentVisits = Visit::with(['visitor.company', 'entrance.building', 'host'])
+        $recentVisits = $this->getScopedVisitQuery()->with(['visitor.company', 'entrance.building', 'host'])
             ->orderBy('created_at', 'desc')
             ->take(10)
             ->get();

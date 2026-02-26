@@ -56,6 +56,9 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 
     // Visits
     Route::livewire('/visits', \App\Livewire\Admin\Visits\VisitList::class)->name('visits');
+
+    // Reports
+    Route::livewire('/reports', \App\Livewire\Admin\Reports\Index::class)->name('reports');
 });
 
 Route::middleware('auth')->group(function () {

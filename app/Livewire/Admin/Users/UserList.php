@@ -15,7 +15,7 @@ class UserList extends Component
 
     public string $search = '';
     public string $role_filter = '';
-    public ?int $company_filter = null;
+    public string $company_filter = '';
     public bool $showModal = false;
     public ?int $editingUserId = null;
 
@@ -35,7 +35,7 @@ class UserList extends Component
             'email' => 'required|email|max:255|unique:users,email',
             'phone' => 'nullable|string|max:50',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:admin,administrator,tenant,receptionist,viewer',
+            'role' => 'required|in:' . implode(',', array_keys(\App\Models\User::getRoles())),
             'is_active' => 'boolean',
             'company_id' => 'nullable|exists:companies,id',
             'notes' => 'nullable|string|max:1000',
@@ -62,7 +62,12 @@ class UserList extends Component
 
     public function editUser(int $userId): void
     {
-        $user = User::findOrFail($userId);
+        $query = User::query();
+        if (!auth()->user()->isAdmin()) {
+            $query->where('company_id', auth()->user()->company_id);
+        }
+        $user = $query->findOrFail($userId);
+        
         $this->editingUserId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
@@ -80,7 +85,17 @@ class UserList extends Component
         $this->validate();
 
         if ($this->editingUserId) {
-            $user = User::findOrFail($this->editingUserId);
+            $query = User::query();
+            if (!auth()->user()->isAdmin()) {
+                $query->where('company_id', auth()->user()->company_id);
+            }
+            $user = $query->findOrFail($this->editingUserId);
+            
+            // Re-enforce company_id for non-admins to prevent them moving a user to another company
+            if (!auth()->user()->isAdmin()) {
+                $this->company_id = auth()->user()->company_id;
+            }
+
             $data = [
                 'name' => $this->name,
                 'email' => $this->email,
@@ -96,6 +111,16 @@ class UserList extends Component
             $user->update($data);
             session()->flash('message', 'User updated successfully.');
         } else {
+            // Force scoped properties
+            if (!auth()->user()->isAdmin()) {
+                $this->company_id = auth()->user()->company_id;
+                
+                // Tenants should not be able to create God Mode admins
+                if ($this->role === 'admin') {
+                    $this->role = 'viewer'; 
+                }
+            }
+
             User::create([
                 'name' => $this->name,
                 'email' => $this->email,
@@ -145,7 +170,11 @@ class UserList extends Component
             return;
         }
 
-        User::findOrFail($userId)->delete();
+        $query = User::query();
+        if (!auth()->user()->isAdmin()) {
+            $query->where('company_id', auth()->user()->company_id);
+        }
+        $query->findOrFail($userId)->delete();
         session()->flash('message', 'User deleted successfully.');
     }
 
@@ -164,21 +193,35 @@ class UserList extends Component
 
     public function render()
     {
-        $users = User::query()
-            ->with('company')
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('email', 'like', "%{$this->search}%"))
+        $query = User::query()->with('company');
+        
+        if (!auth()->user()->isAdmin()) {
+            $query->where('company_id', auth()->user()->company_id);
+        }
+
+        $users = $query->clone()
+            ->when($this->search, fn($q) => $q->where(fn($sq) => $sq->where('name', 'like', "%{$this->search}%")
+                ->orWhere('email', 'like', "%{$this->search}%")))
             ->when($this->role_filter, fn($q) => $q->where('role', $this->role_filter))
-            ->when($this->company_filter, fn($q) => $q->where('company_id', $this->company_filter))
+            ->when($this->company_filter !== '', function($q) {
+                if ($this->company_filter === 'global') {
+                    return $q->whereNull('company_id');
+                }
+                return $q->where('company_id', $this->company_filter);
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 
         // Stats for header
-        $totalUsers = User::count();
-        $activeUsers = User::where('is_active', true)->count();
-        $adminUsers = User::where('role', 'admin')->count();
+        $totalUsers = $query->clone()->count();
+        $activeUsers = $query->clone()->where('is_active', true)->count();
+        $adminUsers = $query->clone()->where('role', 'admin')->count();
 
-        $companies = \App\Models\Company::where('is_active', true)->orderBy('name')->get();
+        $companiesQuery = \App\Models\Company::where('is_active', true)->orderBy('name');
+        if (!auth()->user()->isAdmin()) {
+            $companiesQuery->where('id', auth()->user()->company_id);
+        }
+        $companies = $companiesQuery->get();
 
         return view('livewire.admin.users.user-list', compact(
             'users',

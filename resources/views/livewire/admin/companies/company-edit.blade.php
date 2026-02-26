@@ -240,15 +240,15 @@
                             </div>
                             <div class="company-user-meta">
                                 @if($user->role === 'admin')
-                                <span class="company-user-role company-user-role--admin">God Mode</span>
+                                <span class="company-user-role company-user-role--admin">{{ \App\Models\User::getRoles()[$user->role] ?? 'God Mode' }}</span>
                                 @elseif($user->role === 'administrator')
-                                <span class="company-user-role company-user-role--admin">Administrator</span>
+                                <span class="company-user-role company-user-role--admin">{{ \App\Models\User::getRoles()[$user->role] ?? 'Tenant' }}</span>
                                 @elseif($user->role === 'tenant')
-                                <span class="company-user-role company-user-role--receptionist">Tenant</span>
+                                <span class="company-user-role company-user-role--receptionist">{{ \App\Models\User::getRoles()[$user->role] ?? 'Sub-Tenant' }}</span>
                                 @elseif($user->role === 'receptionist')
-                                <span class="company-user-role company-user-role--receptionist">Receptionist</span>
+                                <span class="company-user-role company-user-role--receptionist">{{ \App\Models\User::getRoles()[$user->role] ?? 'Receptionist' }}</span>
                                 @else
-                                <span class="company-user-role company-user-role--viewer">Viewer</span>
+                                <span class="company-user-role company-user-role--viewer">{{ \App\Models\User::getRoles()[$user->role] ?? 'Viewer' }}</span>
                                 @endif
                                 @if($user->is_active)
                                 <span class="company-user-status company-user-status--active">Active</span>
@@ -432,11 +432,9 @@
                     <div class="users-form-field">
                         <label class="users-form-label">Role *</label>
                         <select wire:model="user_role" class="users-form-input">
-                            <option value="admin">God Mode</option>
-                            <option value="administrator">Administrator</option>
-                            <option value="tenant">Tenant</option>
-                            <option value="receptionist">Receptionist</option>
-                            <option value="viewer">Viewer</option>
+                            @foreach(\App\Models\User::getRoles() as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                         @error('user_role') <p class="users-form-error">{{ $message }}</p> @enderror
                     </div>

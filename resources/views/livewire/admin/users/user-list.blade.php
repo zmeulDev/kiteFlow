@@ -85,16 +85,17 @@
             <div class="users-filters-select">
                 <select wire:model.live="role_filter">
                     <option value="">All Roles</option>
-                    <option value="admin">God Mode</option>
-                    <option value="administrator">Administrator</option>
-                    <option value="tenant">Tenant</option>
-                    <option value="receptionist">Receptionist</option>
-                    <option value="viewer">Viewer</option>
+                    @foreach(\App\Models\User::getRoles() as $value => $label)
+                        <option value="{{ $value }}">{{ $label }}</option>
+                    @endforeach
                 </select>
             </div>
             <div class="users-filters-select">
                 <select wire:model.live="company_filter">
                     <option value="">All Companies</option>
+                    @if(auth()->user()->isAdmin())
+                        <option value="global">Global System / {{ \App\Models\Setting::get('business_name', 'Main Business') }}</option>
+                    @endif
                     @foreach($companies as $company)
                         <option value="{{ $company->id }}">{{ $company->name }}</option>
                     @endforeach
@@ -144,21 +145,21 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
-                    God Mode
+                    {{ \App\Models\User::getRoles()[$user->role] ?? 'God Mode' }}
                 </span>
                 @elseif($user->role === 'administrator')
                 <span class="user-role-badge user-role-badge--administrator">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
-                    Administrator
+                    {{ \App\Models\User::getRoles()[$user->role] ?? 'Tenant' }}
                 </span>
                 @elseif($user->role === 'tenant')
                 <span class="user-role-badge user-role-badge--tenant">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                     </svg>
-                    Tenant
+                    {{ \App\Models\User::getRoles()[$user->role] ?? 'Sub-Tenant' }}
                 </span>
                 @elseif($user->role === 'receptionist')
                 <span class="user-role-badge user-role-badge--receptionist">
@@ -166,7 +167,7 @@
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    Receptionist
+                    {{ \App\Models\User::getRoles()[$user->role] ?? 'Receptionist' }}
                 </span>
                 @else
                 <span class="user-role-badge user-role-badge--viewer">
@@ -174,7 +175,7 @@
                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                         <circle cx="12" cy="12" r="3"></circle>
                     </svg>
-                    Viewer
+                    {{ \App\Models\User::getRoles()[$user->role] ?? 'Viewer' }}
                 </span>
                 @endif
             </div>
@@ -278,11 +279,9 @@
                     <div class="users-form-field">
                         <label class="users-form-label">Role *</label>
                         <select wire:model="role" class="users-form-input">
-                            <option value="admin">God Mode</option>
-                            <option value="administrator">Administrator</option>
-                            <option value="tenant">Tenant</option>
-                            <option value="receptionist">Receptionist</option>
-                            <option value="viewer">Viewer</option>
+                            @foreach(\App\Models\User::getRoles() as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                         @error('role') <p class="users-form-error">{{ $message }}</p> @enderror
                     </div>
@@ -290,7 +289,11 @@
                     <div class="users-form-field">
                         <label class="users-form-label">Company</label>
                         <select wire:model="company_id" class="users-form-input">
-                            <option value="">Select a company</option>
+                            @if(auth()->user()->isAdmin())
+                                <option value="">Global System / {{ \App\Models\Setting::get('business_name', 'Main Business') }}</option>
+                            @else
+                                <option value="">Select a company</option>
+                            @endif
                             @foreach($companies as $company)
                                 <option value="{{ $company->id }}">{{ $company->name }}</option>
                             @endforeach

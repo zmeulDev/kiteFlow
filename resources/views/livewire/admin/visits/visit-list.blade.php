@@ -123,7 +123,7 @@
                 <div class="visit-visitor-info">
                     <div class="visit-visitor-name">{{ $visit->visitor->full_name ?? 'Unknown' }}</div>
                     <div class="visit-visitor-meta">
-                        <span class="visit-visitor-company">{{ $visit->visitor->company->name ?? 'No Company' }}</span>
+                        <span class="visit-visitor-company">{{ $visit->host->company->name ?? ($visit->visitor->company->name ?? 'No Company') }}</span>
                         <span class="visit-visitor-email">{{ $visit->visitor->email ?? '' }}</span>
                     </div>
                 </div>
@@ -225,7 +225,7 @@
                     </div>
                     <div class="visits-modal-visitor-info">
                         <h4>{{ $editingVisit->visitor->full_name }}</h4>
-                        <p>{{ $editingVisit->visitor->company->name ?? 'No Company' }}</p>
+                        <p>{{ $editingVisit->host->company->name ?? ($editingVisit->visitor->company->name ?? 'No Company') }}</p>
                         <span>{{ $editingVisit->visitor->email }}</span>
                     </div>
                 </div>
@@ -323,7 +323,7 @@
                     <div class="visits-schedule-grid">
                         <div class="visits-form-field">
                             <label class="visits-form-label">Company *</label>
-                            <select wire:model.live="schedule_company_id" class="visits-form-input">
+                            <select wire:model.live="schedule_company_id" class="visits-form-input" {{ !auth()->user()->isAdmin() ? 'disabled' : '' }}>
                                 <option value="">Select a company</option>
                                 @foreach($companies as $company)
                                 <option value="{{ $company->id }}">{{ $company->name }}</option>
@@ -333,8 +333,11 @@
                         </div>
                         <div class="visits-form-field">
                             <label class="visits-form-label">Host User (Optional)</label>
-                            <select wire:model="schedule_host_id" class="visits-form-input" {{ !$schedule_company_id ? 'disabled' : '' }}>
-                                <option value="">Select a host (optional)</option>
+                            <select wire:model="schedule_host_id" class="visits-form-input" 
+                                {{ (!$schedule_company_id || (auth()->user()->role === 'viewer' && !auth()->user()->isAdmin())) ? 'disabled' : '' }}>
+                                @if(auth()->user()->role !== 'viewer' || auth()->user()->isAdmin())
+                                    <option value="">Select a host (optional)</option>
+                                @endif
                                 @foreach($hostUsers as $user)
                                 <option value="{{ $user->id }}">{{ $user->name }}</option>
                                 @endforeach
@@ -402,12 +405,22 @@
                         </div>
                         <div class="visits-form-field">
                             <label class="visits-form-label">Date *</label>
-                            <input type="date" wire:model="schedule_date" class="visits-form-input" min="{{ now()->format('Y-m-d') }}">
+                            <input type="text" 
+                                x-data 
+                                x-init="flatpickr($el, { dateFormat: 'Y-m-d', minDate: 'today' })" 
+                                wire:model="schedule_date" 
+                                class="visits-form-input" 
+                                placeholder="Select date (YYYY-MM-DD)">
                             @error('schedule_date') <p class="visits-form-error">{{ $message }}</p> @enderror
                         </div>
                         <div class="visits-form-field">
                             <label class="visits-form-label">Time *</label>
-                            <input type="time" wire:model="schedule_time" class="visits-form-input">
+                            <input type="text" 
+                                x-data 
+                                x-init="flatpickr($el, { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true })" 
+                                wire:model="schedule_time" 
+                                class="visits-form-input" 
+                                placeholder="Select time (HH:MM)">
                             @error('schedule_time') <p class="visits-form-error">{{ $message }}</p> @enderror
                         </div>
                     </div>

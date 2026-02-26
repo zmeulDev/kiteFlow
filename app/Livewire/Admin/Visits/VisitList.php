@@ -97,6 +97,18 @@ class VisitList extends Component
     public function openScheduleModal(): void
     {
         $this->resetScheduleForm();
+        
+        // Auto-select host and company for non-admin users
+        $user = auth()->user();
+        if (!$user->isAdmin()) {
+            $this->schedule_company_id = $user->company_id;
+            
+            // Viewers can only schedule for themselves
+            if ($user->role === 'viewer') {
+                $this->schedule_host_id = $user->id;
+            }
+        }
+        
         $this->showScheduleModal = true;
     }
 
@@ -124,9 +136,22 @@ class VisitList extends Component
 
     public function getEditingVisitProperty(): ?Visit
     {
-        return $this->editingVisitId
-            ? Visit::with(['visitor.company', 'entrance.building', 'host'])->find($this->editingVisitId)
-            : null;
+        if (!$this->editingVisitId) {
+            return null;
+        }
+        
+        $query = Visit::with(['visitor.company', 'entrance.building', 'host']);
+        if (!auth()->user()->isAdmin()) {
+            if (auth()->user()->role === 'viewer') {
+                 $query->where('host_id', auth()->id());
+            } else {
+                 $query->whereHas('host', function ($q) {
+                     $q->where('company_id', auth()->user()->company_id);
+                 });
+            }
+        }
+        
+        return $query->find($this->editingVisitId);
     }
 
     public function getHostUsersProperty()
@@ -134,10 +159,18 @@ class VisitList extends Component
         if (!$this->schedule_company_id) {
             return collect();
         }
-        return User::where('company_id', $this->schedule_company_id)
+        
+        $user = auth()->user();
+        $query = User::where('company_id', $this->schedule_company_id)
             ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+            
+        // If the user is a viewer, they should only see themselves in the host list
+        if (!$user->isAdmin() && $user->role === 'viewer') {
+            $query->where('id', $user->id);
+        }
+            
+        return $query->get();
     }
 
     #[On('confirmCheckOut')]
@@ -155,7 +188,13 @@ class VisitList extends Component
 
     public function showCheckOutConfirm(int $visitId): void
     {
-        $visit = Visit::with('visitor')->findOrFail($visitId);
+        $query = Visit::with('visitor');
+        if (!auth()->user()->isAdmin()) {
+            $query->whereHas('host', function ($q) {
+                $q->where('company_id', auth()->user()->company_id);
+            });
+        }
+        $visit = $query->findOrFail($visitId);
         $visitorName = $visit->visitor->full_name ?? 'Unknown';
 
         $this->dispatch('showConfirmModal', [
@@ -172,7 +211,13 @@ class VisitList extends Component
 
     public function showCheckInConfirm(int $visitId): void
     {
-        $visit = Visit::with('visitor')->findOrFail($visitId);
+        $query = Visit::with('visitor');
+        if (!auth()->user()->isAdmin()) {
+            $query->whereHas('host', function ($q) {
+                $q->where('company_id', auth()->user()->company_id);
+            });
+        }
+        $visit = $query->findOrFail($visitId);
         $visitorName = $visit->visitor->full_name ?? 'Unknown';
 
         $this->dispatch('showConfirmModal', [
@@ -189,7 +234,17 @@ class VisitList extends Component
 
     public function checkIn(int $visitId, VisitService $visitService): void
     {
-        $visit = Visit::findOrFail($visitId);
+        $query = Visit::query();
+        if (!auth()->user()->isAdmin()) {
+            if (auth()->user()->role === 'viewer') {
+                $query->where('host_id', auth()->id());
+            } else {
+                $query->whereHas('host', function ($q) {
+                    $q->where('company_id', auth()->user()->company_id);
+                });
+            }
+        }
+        $visit = $query->findOrFail($visitId);
         $visitService->checkIn($visit);
         session()->flash('message', 'Visitor checked in successfully.');
         $this->closeModal();
@@ -197,13 +252,35 @@ class VisitList extends Component
 
     public function checkOut(int $visitId, VisitService $visitService): void
     {
-        $visit = Visit::findOrFail($visitId);
+        $query = Visit::query();
+        if (!auth()->user()->isAdmin()) {
+            if (auth()->user()->role === 'viewer') {
+                $query->where('host_id', auth()->id());
+            } else {
+                $query->whereHas('host', function ($q) {
+                    $q->where('company_id', auth()->user()->company_id);
+                });
+            }
+        }
+        $visit = $query->findOrFail($visitId);
         $visitService->checkOut($visit);
         session()->flash('message', 'Visitor checked out successfully.');
     }
 
     public function scheduleVisit(VisitSchedulingService $schedulingService): void
     {
+        $user = auth()->user();
+        
+        // Enforce company ID strictly if not admin
+        if (!$user->isAdmin()) {
+            $this->schedule_company_id = $user->company_id;
+            
+            // Viewers MUST be the host
+            if ($user->role === 'viewer') {
+                $this->schedule_host_id = $user->id;
+            }
+        }
+
         $this->validate();
 
         $entrance = Entrance::findOrFail($this->schedule_entrance_id);
@@ -224,13 +301,17 @@ class VisitList extends Component
             'scheduled_at' => $scheduledAt,
         ];
 
-        $visit = $schedulingService->scheduleVisit(
-            $visitorData,
-            $visitData,
-            $entrance,
-            $host,
-            $visitorCompany
-        );
+        try {
+            $visit = $schedulingService->scheduleVisit(
+                $visitorData,
+                $visitData,
+                $entrance,
+                $host,
+                $visitorCompany
+            );
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+        }
 
         session()->flash('message', "Visit scheduled successfully. Check-in code: {$visit->check_in_code}");
         $this->closeScheduleModal();
@@ -238,16 +319,29 @@ class VisitList extends Component
 
     public function render()
     {
-        $visits = Visit::with(['visitor.company', 'entrance.building', 'host'])
-            ->when($this->search, function ($q) {
-                $q->whereHas('visitor', function ($q) {
-                    $q->where('first_name', 'like', "%{$this->search}%")
-                        ->orWhere('last_name', 'like', "%{$this->search}%")
-                        ->orWhere('email', 'like', "%{$this->search}%");
-                })->orWhereHas('host', function ($q) {
-                    $q->where('name', 'like', "%{$this->search}%");
-                })->orWhere('host_name', 'like', "%{$this->search}%")
-                  ->orWhere('check_in_code', 'like', "%{$this->search}%");
+        $query = Visit::with(['visitor.company', 'entrance.building', 'host']);
+        
+        if (!auth()->user()->isAdmin()) {
+            if (auth()->user()->role === 'viewer') {
+                $query->where('host_id', auth()->id());
+            } else {
+                $query->whereHas('host', function ($q) {
+                    $q->where('company_id', auth()->user()->company_id);
+                });
+            }
+        }
+
+        $visits = $query->when($this->search, function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereHas('visitor', function ($q) {
+                        $q->where('first_name', 'like', "%{$this->search}%")
+                            ->orWhere('last_name', 'like', "%{$this->search}%")
+                            ->orWhere('email', 'like', "%{$this->search}%");
+                    })->orWhereHas('host', function ($q) {
+                        $q->where('name', 'like', "%{$this->search}%");
+                    })->orWhere('host_name', 'like', "%{$this->search}%")
+                      ->orWhere('check_in_code', 'like', "%{$this->search}%");
+                });
             })
             ->when($this->status_filter, fn($q) => $q->where('status', $this->status_filter))
             ->when($this->building_filter, function ($q) {
@@ -271,7 +365,13 @@ class VisitList extends Component
 
         $editingVisit = $this->editingVisit;
         $hostUsers = $this->hostUsers;
-        $companies = Company::where('is_active', true)->orderBy('name')->get();
+        
+        $companiesQuery = Company::where('is_active', true)->orderBy('name');
+        if (!auth()->user()->isAdmin()) {
+            $companiesQuery->where('id', auth()->user()->company_id);
+        }
+        $companies = $companiesQuery->get();
+        
         $allEntrances = Entrance::with('building')->where('is_active', true)->orderBy('name')->get();
 
         return view('livewire.admin.visits.visit-list', compact(

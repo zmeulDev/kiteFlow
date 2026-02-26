@@ -24,6 +24,15 @@
                     <span>Dashboard</span>
                 </a>
 
+                <a href="{{ route('admin.reports') }}" class="admin-nav-link {{ request()->routeIs('admin.reports') ? 'admin-nav-link--active' : '' }}">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="20" x2="18" y2="10"></line>
+                        <line x1="12" y1="20" x2="12" y2="4"></line>
+                        <line x1="6" y1="20" x2="6" y2="14"></line>
+                    </svg>
+                    <span>Reports</span>
+                </a>
+
                 @can('viewVisits', App\Models\User::class)
                 <a href="{{ route('admin.visits') }}" class="admin-nav-link {{ request()->routeIs('admin.visits') ? 'admin-nav-link--active' : '' }}">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -131,7 +140,7 @@
                         </div>
                         <div class="admin-nav-user-info">
                             <span class="admin-nav-user-name">{{ Auth::user()->name }}</span>
-                            <span class="admin-nav-user-role">{{ ucfirst(Auth::user()->role) }}</span>
+                            <span class="admin-nav-user-role">{{ \App\Models\User::getRoles()[Auth::user()->role] ?? ucfirst(Auth::user()->role) }}</span>
                         </div>
                         <svg class="admin-nav-dropdown-arrow" :class="{ 'admin-nav-dropdown-arrow--open': open }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="6 9 12 15 18 9"></polyline>
@@ -186,6 +195,15 @@
                     <rect x="3" y="14" width="7" height="7"></rect>
                 </svg>
                 Dashboard
+            </a>
+
+            <a href="{{ route('admin.reports') }}" class="admin-nav-mobile-link {{ request()->routeIs('admin.reports') ? 'admin-nav-mobile-link--active' : '' }}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                Reports
             </a>
 
             @can('viewVisits', App\Models\User::class)

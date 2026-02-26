@@ -43,6 +43,10 @@ class CompanyEdit extends Component
 
     public function mount(Company $company): void
     {
+        if (!auth()->user()->isAdmin() && auth()->user()->company_id !== $company->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
         $this->company = $company;
         $this->name = $company->name;
         $this->address = $company->address ?? '';
@@ -90,7 +94,7 @@ class CompanyEdit extends Component
             'user_email' => 'required|email|max:255|unique:users,email',
             'user_phone' => 'nullable|string|max:50',
             'user_password' => 'required|string|min:8',
-            'user_role' => 'required|in:admin,administrator,tenant,receptionist,viewer',
+            'user_role' => 'required|in:' . implode(',', array_keys(\App\Models\User::getRoles())),
             'user_is_active' => 'boolean',
             'user_notes' => 'nullable|string|max:1000',
         ];
@@ -172,6 +176,11 @@ class CompanyEdit extends Component
             $user->update($data);
             session()->flash('message', 'User updated successfully.');
         } else {
+            // Prevent non-admin tenants from upgrading to God Mode (already blocked in UserList as well, adding here for consistency)
+            if (!auth()->user()->isAdmin() && $this->user_role === 'admin') {
+                $this->user_role = 'viewer';
+            }
+
             User::create([
                 'name' => $this->user_name,
                 'email' => $this->user_email,

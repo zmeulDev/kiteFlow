@@ -13,7 +13,7 @@
             </div>
             <div class="profile-role">
                 <span class="profile-role-badge profile-role-badge--{{ Auth::user()->role }}">
-                    {{ ucfirst(Auth::user()->role) }}
+                    {{ \App\Models\User::getRoles()[Auth::user()->role] ?? ucfirst(Auth::user()->role) }}
                 </span>
             </div>
         </div>

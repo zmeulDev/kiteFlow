@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin\Settings;
 
 use App\Models\Setting;
+use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -13,13 +14,7 @@ class RolePermissions extends Component
     public array $permissions = [];
 
     // The defined roles in the system
-    public array $roles = [
-        'admin' => 'God Mode',
-        'administrator' => 'Tenant',
-        'tenant' => 'Sub-Tenant',
-        'receptionist' => 'Receptionist',
-        'viewer' => 'Viewer'
-    ];
+    public array $roles = [];
 
     // The available permissions to toggle
     public array $availablePermissions = [
@@ -35,6 +30,9 @@ class RolePermissions extends Component
     public function mount(): void
     {
         abort_if(!in_array(auth()->user()->role, ['admin', 'administrator']), 403, 'Unauthorized action.');
+
+        // Load roles from User model
+        $this->roles = User::getRoles();
 
         // Load the stored JSON array from settings.
         $storedPermissions = Setting::get('rbac_permissions', null);

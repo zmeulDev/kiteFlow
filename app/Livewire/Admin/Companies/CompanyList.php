@@ -49,7 +49,12 @@ class CompanyList extends Component
 
     public function editCompany(int $companyId): void
     {
-        $company = Company::findOrFail($companyId);
+        $query = Company::query();
+        if (!auth()->user()->isAdmin()) {
+            $query->where('id', auth()->user()->company_id);
+        }
+        $company = $query->findOrFail($companyId);
+        
         $this->editingCompanyId = $company->id;
         $this->name = $company->name;
         $this->address = $company->address ?? '';
@@ -65,7 +70,11 @@ class CompanyList extends Component
         $this->validate();
 
         if ($this->editingCompanyId) {
-            Company::findOrFail($this->editingCompanyId)->update([
+            $query = Company::query();
+            if (!auth()->user()->isAdmin()) {
+                $query->where('id', auth()->user()->company_id);
+            }
+            $query->findOrFail($this->editingCompanyId)->update([
                 'name' => $this->name,
                 'address' => $this->address,
                 'phone' => $this->phone,
@@ -112,7 +121,11 @@ class CompanyList extends Component
 
     public function deleteCompany(int $companyId): void
     {
-        Company::findOrFail($companyId)->delete();
+        $query = Company::query();
+        if (!auth()->user()->isAdmin()) {
+            $query->where('id', auth()->user()->company_id);
+        }
+        $query->findOrFail($companyId)->delete();
         session()->flash('message', 'Company deleted successfully.');
     }
 
@@ -129,16 +142,21 @@ class CompanyList extends Component
 
     public function render()
     {
-        $companies = Company::query()
-            ->when($this->search, fn($q) => $q->where('name', 'like', "%{$this->search}%")
-                ->orWhere('contact_person', 'like', "%{$this->search}%"))
+        $query = Company::query();
+        if (!auth()->user()->isAdmin()) {
+            $query->where('id', auth()->user()->company_id);
+        }
+
+        $companies = $query->clone()
+            ->when($this->search, fn($q) => $q->where(fn($sq) => $sq->where('name', 'like', "%{$this->search}%")
+                ->orWhere('contact_person', 'like', "%{$this->search}%")))
             ->orderBy('name')
             ->paginate(10);
 
         // Stats for header
-        $totalCompanies = Company::count();
-        $activeCompanies = Company::where('is_active', true)->count();
-        $inactiveCompanies = Company::where('is_active', false)->count();
+        $totalCompanies = $query->clone()->count();
+        $activeCompanies = $query->clone()->where('is_active', true)->count();
+        $inactiveCompanies = $query->clone()->where('is_active', false)->count();
 
         return view('livewire.admin.companies.company-list', compact(
             'companies',

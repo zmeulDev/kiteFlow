@@ -13,6 +13,8 @@ class BusinessDetails extends Component
     public string $business_address = '';
     public string $business_phone = '';
     public string $business_email = '';
+    // Users associated with the business
+    public $businessUsers = [];
 
     protected function rules(): array
     {
@@ -30,6 +32,20 @@ class BusinessDetails extends Component
         $this->business_address = Setting::get('business_address', '');
         $this->business_phone = Setting::get('business_phone', '');
         $this->business_email = Setting::get('business_email', '');
+
+        $this->loadBusinessUsers();
+    }
+
+    public function loadBusinessUsers(): void
+    {
+        $user = auth()->user();
+        if ($user->company_id) {
+            $this->businessUsers = \App\Models\User::where('company_id', $user->company_id)
+                ->orderBy('name')
+                ->get();
+        } else {
+            $this->businessUsers = collect();
+        }
     }
 
     public function save(): void
