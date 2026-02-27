@@ -246,6 +246,12 @@
                 <span class="font-semibold text-secondary">Building</span>
                 <span class="font-medium text-primary">{{ $visit->entrance->building->name }}</span>
             </div>
+            @if($visit->space)
+            <div class="kiosk-detail-row">
+                <span class="font-semibold text-secondary">Meeting Room</span>
+                <span class="font-medium text-primary">{{ $visit->space->name }}</span>
+            </div>
+            @endif
         </div>
 
         <a href="{{ route('kiosk.welcome', $entrance->kiosk_identifier) }}" class="btn kiosk-btn">Done</a>

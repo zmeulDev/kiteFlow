@@ -45,35 +45,51 @@
                 </a>
                 @endcan
 
-                @can('manageCompanies', App\Models\User::class)
-                <a href="{{ route('admin.companies') }}" class="admin-nav-link {{ request()->routeIs('admin.companies') ? 'admin-nav-link--active' : '' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                    </svg>
-                    <span>Companies</span>
-                </a>
-                @endcan
+                @if(auth()->user()->can('manageCompanies', App\Models\User::class) || auth()->user()->can('manageBuildings', App\Models\User::class) || auth()->user()->can('manageUsers', App\Models\User::class))
+                <div class="admin-nav-dropdown" x-data="{ open: false }">
+                    <button @click="open = !open" class="admin-nav-link admin-nav-link--dropdown {{ request()->routeIs('admin.companies') || request()->routeIs('admin.buildings') || request()->routeIs('admin.users') ? 'admin-nav-link--active' : '' }}">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                        </svg>
+                        <span>Management</span>
+                        <svg class="admin-nav-dropdown-arrow" :class="{ 'admin-nav-dropdown-arrow--open': open }" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </button>
+                    <div class="admin-nav-dropdown-menu" x-show="open" @click.away="open = false" x-transition>
+                        @can('manageCompanies', App\Models\User::class)
+                        <a href="{{ route('admin.companies') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.companies') ? 'admin-nav-dropdown-link--active' : '' }}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            </svg>
+                            Companies
+                        </a>
+                        @endcan
 
-                @can('manageBuildings', App\Models\User::class)
-                <a href="{{ route('admin.buildings') }}" class="admin-nav-link {{ request()->routeIs('admin.buildings') ? 'admin-nav-link--active' : '' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="9" y1="3" x2="9" y2="21"></line>
-                    </svg>
-                    <span>Buildings</span>
-                </a>
-                @endcan
+                        @can('manageBuildings', App\Models\User::class)
+                        <a href="{{ route('admin.buildings') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.buildings') ? 'admin-nav-dropdown-link--active' : '' }}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                <line x1="9" y1="3" x2="9" y2="21"></line>
+                            </svg>
+                            Buildings
+                        </a>
+                        @endcan
 
-                @can('manageUsers', App\Models\User::class)
-                <a href="{{ route('admin.users') }}" class="admin-nav-link {{ request()->routeIs('admin.users') ? 'admin-nav-link--active' : '' }}">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <span>Users</span>
-                </a>
-                @endcan
+                        @can('manageUsers', App\Models\User::class)
+                        <a href="{{ route('admin.users') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.users') ? 'admin-nav-dropdown-link--active' : '' }}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                            Users
+                        </a>
+                        @endcan
+                    </div>
+                </div>
+                @endif
 
                 @can('manageSettings', App\Models\User::class)
                 <div class="admin-nav-dropdown" x-data="{ open: false }">
@@ -218,6 +234,9 @@
             </a>
             @endcan
 
+            @if(auth()->user()->can('manageCompanies', App\Models\User::class) || auth()->user()->can('manageBuildings', App\Models\User::class) || auth()->user()->can('manageUsers', App\Models\User::class))
+            <div class="admin-nav-mobile-section">Management</div>
+            
             @can('manageCompanies', App\Models\User::class)
             <a href="{{ route('admin.companies') }}" class="admin-nav-mobile-link {{ request()->routeIs('admin.companies') ? 'admin-nav-mobile-link--active' : '' }}">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -247,6 +266,7 @@
                 Users
             </a>
             @endcan
+            @endif
 
             @can('manageSettings', App\Models\User::class)
             <div class="admin-nav-mobile-section">Settings</div>

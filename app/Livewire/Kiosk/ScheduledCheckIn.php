@@ -93,7 +93,7 @@ class ScheduledCheckIn extends Component
         $visitService->checkIn($this->visit, $consentData);
 
         // Load relationships for display
-        $this->visit->load(['host', 'visitor', 'entrance.building']);
+        $this->visit->load(['host', 'visitor', 'entrance.building', 'space']);
 
         $this->checkedIn = true;
     }

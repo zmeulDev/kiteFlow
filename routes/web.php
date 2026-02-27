@@ -53,6 +53,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
 
     // Buildings management
     Route::livewire('/buildings', \App\Livewire\Admin\Buildings\BuildingList::class)->name('buildings');
+    Route::livewire('/buildings/{building}/edit', \App\Livewire\Admin\Buildings\BuildingEdit::class)->name('buildings.edit');
 
     // Visits
     Route::livewire('/visits', \App\Livewire\Admin\Visits\VisitList::class)->name('visits');

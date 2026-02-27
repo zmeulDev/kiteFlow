@@ -137,7 +137,12 @@
                 <div class="visit-detail">
                     <div class="visit-detail-label">Location</div>
                     <div class="visit-detail-value">{{ $visit->entrance->name }}</div>
-                    <div class="visit-detail-sub">{{ $visit->entrance->building->name }}</div>
+                    <div class="visit-detail-sub">
+                        {{ $visit->entrance->building->name }}
+                        @if($visit->space)
+                            &bull; {{ $visit->space->name }}
+                        @endif
+                    </div>
                 </div>
                 <div class="visit-detail">
                     <div class="visit-detail-label">Check In</div>
@@ -242,7 +247,12 @@
                     <div class="visits-modal-field">
                         <div class="visits-modal-field-label">Location</div>
                         <div class="visits-modal-field-value">{{ $editingVisit->entrance->name }}</div>
-                        <div class="visits-modal-field-sub">{{ $editingVisit->entrance->building->name }}</div>
+                        <div class="visits-modal-field-sub">
+                            {{ $editingVisit->entrance->building->name }}
+                            @if($editingVisit->space)
+                                <br><span style="color: #6b7280;">Meeting Room: {{ $editingVisit->space->name }}</span>
+                            @endif
+                        </div>
                     </div>
                     <div class="visits-modal-field">
                         <div class="visits-modal-field-label">Purpose</div>
@@ -390,13 +400,23 @@
                     <div class="visits-schedule-grid">
                         <div class="visits-form-field">
                             <label class="visits-form-label">Entrance *</label>
-                            <select wire:model="schedule_entrance_id" class="visits-form-input">
+                            <select wire:model.live="schedule_entrance_id" class="visits-form-input">
                                 <option value="">Select an entrance</option>
                                 @foreach($allEntrances as $entrance)
                                 <option value="{{ $entrance->id }}">{{ $entrance->name }} - {{ $entrance->building->name }}</option>
                                 @endforeach
                             </select>
                             @error('schedule_entrance_id') <p class="visits-form-error">{{ $message }}</p> @enderror
+                        </div>
+                        <div class="visits-form-field">
+                            <label class="visits-form-label">Meeting Room (Optional)</label>
+                            <select wire:model="schedule_space_id" class="visits-form-input" {{ !$schedule_entrance_id || $availableSpaces->isEmpty() ? 'disabled' : '' }}>
+                                <option value="">{{ $schedule_entrance_id ? ($availableSpaces->isEmpty() ? 'No spaces available' : 'Select a room') : 'Select entrance first' }}</option>
+                                @foreach($availableSpaces as $space)
+                                <option value="{{ $space->id }}">{{ $space->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('schedule_space_id') <p class="visits-form-error">{{ $message }}</p> @enderror
                         </div>
                         <div class="visits-form-field">
                             <label class="visits-form-label">Purpose</label>

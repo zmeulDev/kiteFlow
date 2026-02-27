@@ -104,6 +104,12 @@
                 <span class="font-semibold text-secondary">Entrance</span>
                 <span class="font-medium text-primary">{{ $scheduledVisit->entrance->name }}</span>
             </div>
+            @if($scheduledVisit->space)
+            <div class="kiosk-detail-row">
+                <span class="font-semibold text-secondary">Meeting Room</span>
+                <span class="font-medium text-primary">{{ $scheduledVisit->space->name }}</span>
+            </div>
+            @endif
         </div>
 
         <div class="flex flex-col sm:flex-row gap-3">

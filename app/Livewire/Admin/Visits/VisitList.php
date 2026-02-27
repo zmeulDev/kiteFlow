@@ -5,6 +5,7 @@ namespace App\Livewire\Admin\Visits;
 use App\Models\Building;
 use App\Models\Company;
 use App\Models\Entrance;
+use App\Models\Space;
 use App\Models\User;
 use App\Models\Visit;
 use App\Services\VisitSchedulingService;
@@ -39,6 +40,7 @@ class VisitList extends Component
     public string $schedule_phone = '';
     public ?int $schedule_visitor_company_id = null;
     public ?int $schedule_entrance_id = null;
+    public ?int $schedule_space_id = null;
     public string $schedule_purpose = '';
     public string $schedule_date = '';
     public string $schedule_time = '';
@@ -54,6 +56,7 @@ class VisitList extends Component
             'schedule_phone' => 'nullable|string|max:50',
             'schedule_visitor_company_id' => 'nullable|exists:companies,id',
             'schedule_entrance_id' => 'required|exists:entrances,id',
+            'schedule_space_id' => 'nullable|exists:spaces,id',
             'schedule_purpose' => 'nullable|string|max:255',
             'schedule_date' => 'required|date|after_or_equal:today',
             'schedule_time' => 'required',
@@ -80,6 +83,12 @@ class VisitList extends Component
     {
         // Reset host when company changes
         $this->schedule_host_id = null;
+    }
+
+    public function updatedScheduleEntranceId(): void
+    {
+        // Reset space when entrance changes
+        $this->schedule_space_id = null;
     }
 
     public function editVisit(int $visitId): void
@@ -128,6 +137,7 @@ class VisitList extends Component
         $this->schedule_phone = '';
         $this->schedule_visitor_company_id = null;
         $this->schedule_entrance_id = null;
+        $this->schedule_space_id = null;
         $this->schedule_purpose = '';
         $this->schedule_date = '';
         $this->schedule_time = '';
@@ -140,7 +150,7 @@ class VisitList extends Component
             return null;
         }
         
-        $query = Visit::with(['visitor.company', 'entrance.building', 'host']);
+        $query = Visit::with(['visitor.company', 'entrance.building', 'host', 'space']);
         if (!auth()->user()->isAdmin()) {
             if (auth()->user()->role === 'viewer') {
                  $query->where('host_id', auth()->id());
@@ -284,6 +294,7 @@ class VisitList extends Component
         $this->validate();
 
         $entrance = Entrance::findOrFail($this->schedule_entrance_id);
+        $space = $this->schedule_space_id ? Space::find($this->schedule_space_id) : null;
         $host = $this->schedule_host_id ? User::find($this->schedule_host_id) : null;
         $visitorCompany = $this->schedule_visitor_company_id ? Company::find($this->schedule_visitor_company_id) : null;
 
@@ -307,7 +318,8 @@ class VisitList extends Component
                 $visitData,
                 $entrance,
                 $host,
-                $visitorCompany
+                $visitorCompany,
+                $space
             );
         } catch (\Exception $e) {
             dd($e->getMessage());
@@ -319,7 +331,7 @@ class VisitList extends Component
 
     public function render()
     {
-        $query = Visit::with(['visitor.company', 'entrance.building', 'host']);
+        $query = Visit::with(['visitor.company', 'entrance.building', 'host', 'space']);
         
         if (!auth()->user()->isAdmin()) {
             if (auth()->user()->role === 'viewer') {
@@ -374,6 +386,17 @@ class VisitList extends Component
         
         $allEntrances = Entrance::with('building')->where('is_active', true)->orderBy('name')->get();
 
+        $availableSpaces = collect();
+        if ($this->schedule_entrance_id) {
+            $selectedEntrance = Entrance::find($this->schedule_entrance_id);
+            if ($selectedEntrance) {
+                $availableSpaces = Space::where('building_id', $selectedEntrance->building_id)
+                    ->where('is_active', true)
+                    ->orderBy('name')
+                    ->get();
+            }
+        }
+
         return view('livewire.admin.visits.visit-list', compact(
             'visits',
             'buildings',
@@ -381,7 +404,8 @@ class VisitList extends Component
             'editingVisit',
             'hostUsers',
             'companies',
-            'allEntrances'
+            'allEntrances',
+            'availableSpaces'
         ));
     }
 }

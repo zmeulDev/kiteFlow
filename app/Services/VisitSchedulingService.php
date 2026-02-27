@@ -24,9 +24,10 @@ class VisitSchedulingService
         array $visitData,
         Entrance $entrance,
         ?User $host = null,
-        ?Company $visitorCompany = null
+        ?Company $visitorCompany = null,
+        ?\App\Models\Space $space = null
     ): Visit {
-        return DB::transaction(function () use ($visitorData, $visitData, $entrance, $host, $visitorCompany) {
+        return DB::transaction(function () use ($visitorData, $visitData, $entrance, $host, $visitorCompany, $space) {
             // Create or find visitor
             $visitor = Visitor::firstOrCreate(
                 ['email' => $visitorData['email']],
@@ -42,6 +43,7 @@ class VisitSchedulingService
             $visit = Visit::create([
                 'visitor_id' => $visitor->id,
                 'entrance_id' => $entrance->id,
+                'space_id' => $space?->id,
                 'host_id' => $host?->id,
                 'host_name' => $host?->name ?? $visitData['host_name'] ?? null,
                 'host_email' => $host?->email ?? $visitData['host_email'] ?? null,
@@ -53,7 +55,7 @@ class VisitSchedulingService
             ]);
 
             // Load relationships for emails
-            $visit->load(['visitor.company', 'entrance.building', 'host']);
+            $visit->load(['visitor.company', 'entrance.building', 'host', 'space']);
 
             // Send invitation email to visitor
             if ($visitor->email) {

@@ -13,6 +13,7 @@ class Visit extends Model
     protected $fillable = [
         'visitor_id',
         'entrance_id',
+        'space_id',
         'host_id',
         'host_name',
         'host_email',
@@ -48,6 +49,11 @@ class Visit extends Model
     public function entrance(): BelongsTo
     {
         return $this->belongsTo(Entrance::class);
+    }
+
+    public function space(): BelongsTo
+    {
+        return $this->belongsTo(Space::class);
     }
 
     public function host(): BelongsTo

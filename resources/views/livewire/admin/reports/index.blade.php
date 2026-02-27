@@ -64,4 +64,122 @@
             <div class="text-3xl font-bold text-gray-900 dark:text-white">{{ $thisMonthVisits }}</div>
         </div>
     </div>
+
+    {{-- Advanced Statistics Grid --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+        
+        {{-- Top Hosts --}}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center text-gray-900 dark:text-white mb-6">
+                <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold">Top Hosts</h3>
+            </div>
+            @if(count($visitsByHost) > 0)
+                @php $maxHost = max(array_column($visitsByHost, 'count')); @endphp
+                <div class="space-y-4">
+                    @foreach($visitsByHost as $host)
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ $host['name'] }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ $host['count'] }} visits</span>
+                            </div>
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                                <div class="bg-indigo-500 h-2 rounded-full" style="width: {{ ($host['count'] / max($maxHost, 1)) * 100 }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">No data available.</p>
+            @endif
+        </div>
+
+        {{-- Entrance Popularity --}}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center text-gray-900 dark:text-white mb-6">
+                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                <h3 class="text-lg font-semibold">Entrance Usage</h3>
+            </div>
+            @if(count($visitsByEntrance) > 0)
+                @php $maxEntrance = max(array_column($visitsByEntrance, 'count')); @endphp
+                <div class="space-y-4">
+                    @foreach($visitsByEntrance as $entrance)
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ $entrance['name'] }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ $entrance['count'] }} check-ins</span>
+                            </div>
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                                <div class="bg-blue-500 h-2 rounded-full" style="width: {{ ($entrance['count'] / max($maxEntrance, 1)) * 100 }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">No data available.</p>
+            @endif
+        </div>
+
+        {{-- Visits by Status --}}
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center text-gray-900 dark:text-white mb-6">
+                <svg class="w-5 h-5 mr-2 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <h3 class="text-lg font-semibold">Visit Status Breakdown</h3>
+            </div>
+            @if(count($visitsByStatus) > 0)
+                @php $maxStatus = max(array_column($visitsByStatus, 'count')); @endphp
+                <div class="space-y-4">
+                    @foreach($visitsByStatus as $status)
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-gray-700 dark:text-gray-300 capitalize">{{ str_replace('_', ' ', $status['status']) }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ $status['count'] }}</span>
+                            </div>
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                                <div class="bg-purple-500 h-2 rounded-full" style="width: {{ ($status['count'] / max($maxStatus, 1)) * 100 }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">No data available.</p>
+            @endif
+        </div>
+
+        {{-- Top Companies (God Mode Only) --}}
+        @if(auth()->user()->isAdmin())
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center text-gray-900 dark:text-white mb-6">
+                <svg class="w-5 h-5 mr-2 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                <h3 class="text-lg font-semibold">Top Companies</h3>
+            </div>
+            @if(count($visitsByCompany) > 0)
+                @php $maxCompany = max(array_column($visitsByCompany, 'count')); @endphp
+                <div class="space-y-4">
+                    @foreach($visitsByCompany as $company)
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="font-medium text-gray-700 dark:text-gray-300">{{ $company['name'] }}</span>
+                                <span class="text-gray-500 dark:text-gray-400">{{ $company['count'] }} visits</span>
+                            </div>
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+                                <div class="bg-emerald-500 h-2 rounded-full" style="width: {{ ($company['count'] / max($maxCompany, 1)) * 100 }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <p class="text-gray-500 dark:text-gray-400 text-sm text-center py-4">No data available.</p>
+            @endif
+        </div>
+        @endif
+    </div>
 </div>

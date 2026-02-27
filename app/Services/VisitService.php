@@ -72,7 +72,7 @@ class VisitService
     public function findByCheckInCode(string $checkInCode): ?Visit
     {
         return Visit::where('check_in_code', strtoupper($checkInCode))
-            ->with(['visitor', 'host', 'entrance.building'])
+            ->with(['visitor', 'host', 'entrance.building', 'space'])
             ->first();
     }
 

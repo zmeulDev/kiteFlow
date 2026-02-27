@@ -4,15 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Building extends Model
+class Space extends Model
 {
     use HasFactory;
 
     protected $fillable = [
+        'building_id',
         'name',
-        'address',
+        'amenities',
         'is_active',
     ];
 
@@ -20,16 +20,12 @@ class Building extends Model
     {
         return [
             'is_active' => 'boolean',
+            'amenities' => 'array',
         ];
     }
 
-    public function entrances(): HasMany
+    public function building(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
-        return $this->hasMany(Entrance::class);
-    }
-
-    public function spaces(): HasMany
-    {
-        return $this->hasMany(Space::class);
+        return $this->belongsTo(Building::class);
     }
 }

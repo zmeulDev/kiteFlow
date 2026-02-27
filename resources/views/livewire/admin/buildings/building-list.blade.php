@@ -127,86 +127,26 @@
                 </div>
 
                 <div class="building-actions">
-                    <button wire:click="createEntrance({{ $building->id }})" class="building-action-btn building-action-btn--add" title="Add Entrance">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
-                        </svg>
-                    </button>
-                    <button wire:click="editBuilding({{ $building->id }})" class="building-action-btn building-action-btn--edit" title="Edit Building">
+                    <a href="{{ route('admin.buildings.edit', $building->id) }}" class="building-action-btn building-action-btn--edit" title="Manage Building">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
-                    </button>
-                    <button wire:click="showDeleteBuildingConfirm({{ $building->id }}, '{{ $building->name }}')" class="building-action-btn building-action-btn--delete" title="Delete Building">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                        </svg>
-                    </button>
+                        Manage Building
+                    </a>
                 </div>
             </div>
 
-            {{-- Entrances --}}
-            <div class="building-entrances">
-                @if($building->entrances->count() > 0)
-                <div class="entrances-grid">
-                    @foreach($building->entrances as $entrance)
-                    <div class="entrance-card {{ $entrance->is_active ? 'entrance-card--active' : 'entrance-card--inactive' }}" wire:key="entrance-{{ $entrance->id }}">
-                        <div class="entrance-header">
-                            <div class="entrance-icon">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <line x1="9" y1="3" x2="9" y2="21"></line>
-                                </svg>
-                            </div>
-                            <div class="entrance-info">
-                                <div class="entrance-name">{{ $entrance->name }}</div>
-                                <div class="entrance-id">{{ $entrance->kiosk_identifier }}</div>
-                            </div>
-                            @if($entrance->is_active)
-                            <span class="entrance-badge entrance-badge--active">Active</span>
-                            @else
-                            <span class="entrance-badge entrance-badge--inactive">Inactive</span>
-                            @endif
-                        </div>
-                        <div class="entrance-actions">
-                            <a href="{{ route('kiosk.welcome', $entrance->kiosk_identifier) }}" target="_blank" class="entrance-link">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                                    <polyline points="15 3 21 3 21 9"></polyline>
-                                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                                </svg>
-                                Kiosk
-                            </a>
-                            <a href="{{ route('kiosk.checkout', $entrance->kiosk_identifier) }}" target="_blank" class="entrance-link">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                                    <polyline points="16 17 21 12 16 7"></polyline>
-                                    <line x1="21" y1="12" x2="9" y2="12"></line>
-                                </svg>
-                                Checkout
-                            </a>
-                            <button wire:click="editEntrance({{ $entrance->id }})" class="entrance-btn entrance-btn--edit">Edit</button>
-                            <button wire:click="showDeleteEntranceConfirm({{ $entrance->id }}, '{{ $entrance->name }}')" class="entrance-btn entrance-btn--delete">Delete</button>
-                        </div>
-                    </div>
-                    @endforeach
+            {{-- Entrances & Spaces Summary --}}
+            <div class="building-entrances" style="margin-top: 1.5rem; display: flex; gap: 2rem;">
+                <div>
+                    <span style="font-size: 0.875rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Entrances</span>
+                    <span style="font-weight: 600; font-size: 1.125rem; color: #111827;">{{ $building->entrances->count() }}</span>
                 </div>
-                @else
-                <div class="entrances-empty">
-                    <p>No entrances configured</p>
-                    <button wire:click="createEntrance({{ $building->id }})" class="entrances-add-btn">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                        </svg>
-                        Add Entrance
-                    </button>
+                <div>
+                    <span style="font-size: 0.875rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Meeting Rooms</span>
+                    <span style="font-weight: 600; font-size: 1.125rem; color: #111827;">{{ $building->spaces->count() }}</span>
                 </div>
-                @endif
             </div>
         </div>
         @empty
@@ -279,58 +219,6 @@
         </div>
     </div>
     @endif
-
-    {{-- Entrance Modal --}}
-    @if($showEntranceModal)
-    <div class="buildings-modal-overlay" wire:click.self="$set('showEntranceModal', false)">
-        <div class="buildings-modal">
-            <div class="buildings-modal-header buildings-modal-header--entrance">
-                <div class="buildings-modal-icon buildings-modal-icon--entrance">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="9" y1="3" x2="9" y2="21"></line>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="buildings-modal-title">{{ $editingEntranceId ? 'Edit Entrance' : 'New Entrance' }}</h3>
-                    <p class="buildings-modal-subtitle">{{ $editingEntranceId ? 'Update entrance settings' : 'Add a kiosk entrance point' }}</p>
-                </div>
-            </div>
-
-            <form wire:submit="saveEntrance" class="buildings-modal-body">
-                <div class="buildings-form-grid">
-                    <div class="buildings-form-field buildings-form-field--full">
-                        <label class="buildings-form-label">Entrance Name *</label>
-                        <input type="text" wire:model="entrance_name" class="buildings-form-input" placeholder="e.g., Main Lobby, Side Entrance">
-                        @error('entrance_name') <p class="buildings-form-error">{{ $message }}</p> @enderror
-                    </div>
-
-                    <div class="buildings-form-field buildings-form-field--full">
-                        <label class="buildings-form-label">Kiosk Identifier *</label>
-                        <input type="text" wire:model="entrance_kiosk_identifier" class="buildings-form-input" placeholder="unique-identifier">
-                        @error('entrance_kiosk_identifier') <p class="buildings-form-error">{{ $message }}</p> @enderror
-                        <p class="buildings-form-hint">Unique identifier used in kiosk URLs</p>
-                    </div>
-
-                    <div class="buildings-form-field buildings-form-field--full">
-                        <label class="buildings-form-toggle">
-                            <input type="checkbox" wire:model="entrance_is_active" class="buildings-form-checkbox">
-                            <span class="buildings-form-toggle-label">
-                                <span class="buildings-form-toggle-text">Active Status</span>
-                                <span class="buildings-form-toggle-hint">Entrance will be available for check-ins</span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="buildings-modal-footer">
-                    <button type="button" wire:click="$set('showEntranceModal', false)" class="buildings-btn buildings-btn--secondary">Cancel</button>
-                    <button type="submit" class="buildings-btn buildings-btn--primary">
-                        {{ $editingEntranceId ? 'Update Entrance' : 'Create Entrance' }}
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-    @endif
+    
+</div>
 </div>
