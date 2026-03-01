@@ -62,6 +62,40 @@ class User extends Authenticatable
         return $this->role === 'viewer';
     }
 
+    public function canManageAllTenants(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function getManagedCompanyIds(): array
+    {
+        if ($this->canManageAllTenants()) {
+            return Company::pluck('id')->toArray();
+        }
+
+        if (!$this->company_id) {
+            return [];
+        }
+
+        if (in_array($this->role, ['administrator', 'receptionist'])) {
+            return array_merge([$this->company_id], $this->getAllChildCompanyIds((int)$this->company_id));
+        }
+
+        return [$this->company_id];
+    }
+
+    protected function getAllChildCompanyIds(int $parentId): array
+    {
+        $childIds = Company::where('parent_id', $parentId)->pluck('id')->toArray();
+        $allIds = $childIds;
+
+        foreach ($childIds as $childId) {
+            $allIds = array_merge($allIds, $this->getAllChildCompanyIds($childId));
+        }
+
+        return $allIds;
+    }
+
     public static function getRoles(): array
     {
         return [
@@ -71,6 +105,29 @@ class User extends Authenticatable
             'receptionist' => 'Receptionist',
             'viewer' => 'Employee'
         ];
+    }
+
+    public function getAssignableRoles(): array
+    {
+        $allRoles = static::getRoles();
+
+        if ($this->isAdmin()) {
+            return $allRoles;
+        }
+
+        if ($this->isAdministrator()) {
+            unset($allRoles['admin']);
+            return $allRoles;
+        }
+
+        if ($this->isTenant()) {
+            return [
+                'tenant' => $allRoles['tenant'],
+                'viewer' => $allRoles['viewer'],
+            ];
+        }
+
+        return ['viewer' => $allRoles['viewer']];
     }
 
     public function company(): BelongsTo

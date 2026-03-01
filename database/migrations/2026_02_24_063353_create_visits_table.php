@@ -12,13 +12,17 @@ return new class extends Migration
             $table->id();
             $table->foreignId('visitor_id')->constrained()->cascadeOnDelete();
             $table->foreignId('entrance_id')->constrained()->cascadeOnDelete();
-            $table->string('host_name');
+            $table->foreignId('space_id')->nullable()->constrained('spaces')->nullOnDelete();
+            $table->foreignId('host_id')->nullable()->constrained('users')->nullOnDelete();
+            $table->string('host_name')->nullable();
             $table->string('host_email')->nullable();
             $table->string('purpose')->nullable();
             $table->timestamp('check_in_at')->nullable();
             $table->timestamp('check_out_at')->nullable();
+            $table->timestamp('scheduled_at')->nullable();
             $table->enum('status', ['pending', 'checked_in', 'checked_out'])->default('pending');
             $table->string('qr_code')->unique()->nullable();
+            $table->string('check_in_code', 6)->nullable()->unique();
             $table->timestamp('gdpr_consent_at')->nullable();
             $table->timestamp('nda_consent_at')->nullable();
             $table->text('signature')->nullable();

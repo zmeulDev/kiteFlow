@@ -32,11 +32,15 @@ class BuildingEdit extends Component
 
     // Space fields
     public string $space_name = '';
+    public ?int $space_capacity = null;
     public string $space_amenities = '';
     public bool $space_is_active = true;
 
     public function mount(Building $building): void
     {
+        $user = auth()->user();
+        abort_if(!$user->can('manageBuildings', \App\Models\User::class) && !$user->can('viewBuildings', \App\Models\User::class), 403);
+
         $this->building = $building;
         
         $this->building_name = $building->name;
@@ -54,6 +58,7 @@ class BuildingEdit extends Component
             'entrance_kiosk_identifier' => 'required|string|max:100|unique:entrances,kiosk_identifier',
             'entrance_is_active' => 'boolean',
             'space_name' => 'required|string|max:255',
+            'space_capacity' => 'nullable|integer|min:1',
             'space_amenities' => 'nullable|string',
             'space_is_active' => 'boolean',
         ];
@@ -61,6 +66,7 @@ class BuildingEdit extends Component
 
     public function saveBuilding(): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $this->validate([
             'building_name' => 'required|string|max:255',
             'building_address' => 'nullable|string|max:500',
@@ -98,6 +104,7 @@ class BuildingEdit extends Component
 
     public function createEntrance(): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $this->resetEntranceForm();
         $this->entrance_kiosk_identifier = Str::slug($this->building->name . '-' . Str::random(6));
         $this->showEntranceModal = true;
@@ -105,6 +112,7 @@ class BuildingEdit extends Component
 
     public function editEntrance(int $entranceId): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $entrance = Entrance::findOrFail($entranceId);
         $this->editingEntranceId = $entrance->id;
         $this->entrance_name = $entrance->name;
@@ -115,6 +123,7 @@ class BuildingEdit extends Component
 
     public function saveEntrance(): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $rules = [
             'entrance_name' => 'required|string|max:255',
             'entrance_kiosk_identifier' => 'required|string|max:100|unique:entrances,kiosk_identifier',
@@ -164,6 +173,7 @@ class BuildingEdit extends Component
 
     public function deleteEntrance(int $entranceId): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         Entrance::findOrFail($entranceId)->delete();
         session()->flash('message', 'Entrance deleted successfully.');
         $this->building->load('entrances');
@@ -177,7 +187,7 @@ class BuildingEdit extends Component
 
     public function showDeleteSpaceConfirm(int $spaceId, string $spaceName): void
     {
-        abort_if(!auth()->user()->isAdmin(), 403);
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $this->dispatch('showConfirmModal', [
             'modalId' => 'delete-space',
             'title' => 'Delete Space',
@@ -192,17 +202,18 @@ class BuildingEdit extends Component
 
     public function createSpace(): void
     {
-        abort_if(!auth()->user()->isAdmin(), 403);
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $this->resetSpaceForm();
         $this->showSpaceModal = true;
     }
 
     public function editSpace(int $spaceId): void
     {
-        abort_if(!auth()->user()->isAdmin(), 403);
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $space = Space::findOrFail($spaceId);
         $this->editingSpaceId = $space->id;
         $this->space_name = $space->name;
+        $this->space_capacity = $space->capacity;
         $this->space_amenities = is_array($space->amenities) ? implode(', ', $space->amenities) : '';
         $this->space_is_active = $space->is_active;
         $this->showSpaceModal = true;
@@ -210,9 +221,10 @@ class BuildingEdit extends Component
 
     public function saveSpace(): void
     {
-        abort_if(!auth()->user()->isAdmin(), 403);
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         $this->validate([
             'space_name' => 'required|string|max:255',
+            'space_capacity' => 'nullable|integer|min:1',
             'space_amenities' => 'nullable|string',
             'space_is_active' => 'boolean',
         ]);
@@ -226,6 +238,7 @@ class BuildingEdit extends Component
         if ($this->editingSpaceId) {
             Space::findOrFail($this->editingSpaceId)->update([
                 'name' => $this->space_name,
+                'capacity' => $this->space_capacity,
                 'amenities' => empty($amenitiesArray) ? null : array_values($amenitiesArray),
                 'is_active' => $this->space_is_active,
             ]);
@@ -234,6 +247,7 @@ class BuildingEdit extends Component
             Space::create([
                 'building_id' => $this->building->id,
                 'name' => $this->space_name,
+                'capacity' => $this->space_capacity,
                 'amenities' => empty($amenitiesArray) ? null : array_values($amenitiesArray),
                 'is_active' => $this->space_is_active,
             ]);
@@ -247,7 +261,7 @@ class BuildingEdit extends Component
 
     public function deleteSpace(int $spaceId): void
     {
-        abort_if(!auth()->user()->isAdmin(), 403);
+        abort_if(!auth()->user()->can('manageBuildings', \App\Models\User::class), 403);
         Space::findOrFail($spaceId)->delete();
         session()->flash('message', 'Space deleted successfully.');
         $this->building->load('spaces');
@@ -265,6 +279,7 @@ class BuildingEdit extends Component
     {
         $this->editingSpaceId = null;
         $this->space_name = '';
+        $this->space_capacity = null;
         $this->space_amenities = '';
         $this->space_is_active = true;
     }

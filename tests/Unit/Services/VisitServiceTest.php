@@ -59,6 +59,7 @@ class VisitServiceTest extends TestCase
         $this->assertEquals('pending', $visit->status);
         $this->assertEquals('test-qr-code-123', $visit->qr_code);
         $this->assertEquals($entrance->id, $visit->entrance_id);
+        $this->assertNotNull($visit->check_in_code);
 
         $this->assertDatabaseHas('visitors', [
             'first_name' => 'John',

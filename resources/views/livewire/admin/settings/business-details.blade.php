@@ -55,6 +55,8 @@
                     <input type="text" wire:model="business_phone" class="settings-form-input" placeholder="+44 20 1234 5678">
                     @error('business_phone') <p class="settings-form-error">{{ $message }}</p> @enderror
                 </div>
+
+
             </div>
 
             <div class="settings-form-footer">
@@ -70,73 +72,68 @@
         </form>
     </div>
 
-    {{-- Associated Users Card --}}
-    @if(auth()->user()->company_id)
-    <div class="settings-card mt-8">
-        <div class="settings-card-header !pb-4 !border-b !border-gray-200 dark:!border-gray-700">
-            <div>
-                <h3 class="settings-card-title">Associated Users</h3>
-                <p class="settings-card-description">Users belonging to your company</p>
+    {{-- Manual Cleanup Card --}}
+    <div class="settings-card settings-card--danger mt-8">
+        <div class="settings-card-header">
+            <div class="settings-card-icon settings-card-icon--danger">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
             </div>
-            <a href="{{ route('admin.users') }}" class="settings-btn settings-btn--outline text-sm">
-                Manage Users
-            </a>
+            <div>
+                <h3 class="settings-card-title">Data Retention & Manual Cleanup</h3>
+                <p class="settings-card-description">Configure automatic data cleanup rules and run manual cleanup to delete outdated visits.</p>
+            </div>
         </div>
         
-        <div class="settings-card-body p-0">
-            @if($businessUsers->count() > 0)
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead>
-                            <tr class="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Name</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                                <th class="px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            @foreach($businessUsers as $user)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                                <td class="px-6 py-4">
-                                    <div class="flex items-center">
-                                        <div class="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center font-semibold text-xs mr-3">
-                                            {{ collect(explode(' ', $user->name))->map(fn($w) => substr($w, 0, 1))->take(2)->join('') }}
-                                        </div>
-                                        <div>
-                                            <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $user->name }}</div>
-                                            <div class="text-xs text-gray-500 dark:text-gray-400">{{ $user->email }}</div>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
-                                        {{ \App\Models\User::getRoles()[$user->role] ?? ucfirst($user->role) }}
-                                    </span>
-                                </td>
-                                <td class="px-6 py-4">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $user->is_active ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }}">
-                                        {{ $user->is_active ? 'Active' : 'Inactive' }}
-                                    </span>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
+        <div class="settings-card-body pb-0">
+            <div class="mb-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+                <form wire:submit="save">
+                    <div class="settings-form-field">
+                        <label class="settings-form-label">Retention Period (Days) *</label>
+                        <div class="flex items-start max-w-sm">
+                            <input type="number" wire:model.live.debounce.500ms="retention_days" min="1" max="365" class="settings-form-input mr-3" placeholder="90">
+                            <button type="submit" class="settings-btn settings-btn--outline whitespace-nowrap">
+                                Save Rule
+                            </button>
+                        </div>
+                        @error('retention_days') <p class="settings-form-error mt-1">{{ $message }}</p> @enderror
+                        <p class="settings-form-hint mt-2">Visit records older than this will be automatically deleted going forward.</p>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                <div>
+                    <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Estimated Cleanup Impact</h4>
+                    <p class="text-xs text-gray-500 mb-3">Based on your current retention period of <strong>{{ $retention_days }} days</strong>:</p>
+                    <ul class="text-sm space-y-2 mb-4">
+                        <li class="flex items-center text-red-600 dark:text-red-400">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <strong>{{ $visitsToDeleteCount }}</strong>&nbsp;visit records to be deleted
+                        </li>
+                        <li class="flex items-center text-red-600 dark:text-red-400">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            <strong>{{ $visitorsToDeleteCount }}</strong>&nbsp;orphaned visitor profiles to be deleted
+                        </li>
+                    </ul>
                 </div>
-            @else
-                <div class="p-6 text-center text-gray-500 dark:text-gray-400">
-                    No users currently associated with your company.
-                </div>
-            @endif
+            </div>
+        </div>
+        
+        <div class="settings-card-footer border-t border-gray-100 dark:border-gray-800 pt-4 mt-2">
+            <button wire:click="showCleanupConfirm" class="settings-btn settings-btn--danger">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                </svg>
+                Run Cleanup Now
+            </button>
         </div>
     </div>
-    @else
-    <div class="settings-card mt-8">
-        <div class="p-6 text-center text-gray-500 dark:text-gray-400">
-            You are a global System Administrator not bound to a specific company. 
-            <br>
-            <a href="{{ route('admin.companies') }}" class="text-blue-600 hover:underline mt-2 inline-block">Manage All Companies</a>
-        </div>
-    </div>
-    @endif
+
+
 </div>

@@ -29,13 +29,16 @@ class Dashboard extends Component
 
     protected function getScopedVisitQuery()
     {
+        $user = auth()->user();
         $query = Visit::query();
-        if (!auth()->user()->isAdmin()) {
-            if (auth()->user()->role === 'viewer') {
-                $query->where('host_id', auth()->id());
+        
+        if (!$user->canManageAllTenants()) {
+            if ($user->role === 'viewer') {
+                $query->where('host_id', $user->id);
             } else {
-                $query->whereHas('host', function ($q) {
-                    $q->where('company_id', auth()->user()->company_id);
+                $managedCompanyIds = $user->getManagedCompanyIds();
+                $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                    $q->whereIn('company_id', $managedCompanyIds);
                 });
             }
         }

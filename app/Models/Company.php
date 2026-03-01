@@ -22,6 +22,7 @@ class Company extends Model
         'contract_start_date',
         'contract_end_date',
         'main_contact_user_id',
+        'parent_id',
     ];
 
     protected function casts(): array
@@ -31,6 +32,21 @@ class Company extends Model
             'contract_start_date' => 'date',
             'contract_end_date' => 'date',
         ];
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(Company::class, 'parent_id');
+    }
+
+    public function children()
+    {
+        return $this->hasMany(Company::class, 'parent_id');
+    }
+
+    public function allChildrenIds(): array
+    {
+        return $this->children()->pluck('id')->toArray();
     }
 
     public function visitors(): HasMany

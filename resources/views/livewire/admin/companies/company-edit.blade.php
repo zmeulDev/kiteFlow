@@ -45,7 +45,7 @@
     {{-- Summary Cards --}}
     <div class="company-summary-grid">
         {{-- Contact Details Card --}}
-        <div class="company-summary-card">
+        <div class="company-summary-card company-edit-card">
             <div class="company-summary-card-header">
                 <div class="company-summary-card-icon company-summary-card-icon--blue">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -86,7 +86,7 @@
         </div>
 
         {{-- Contract Details Card --}}
-        <div class="company-summary-card">
+        <div class="company-summary-card company-edit-card">
             <div class="company-summary-card-header">
                 <div class="company-summary-card-icon company-summary-card-icon--amber">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -130,7 +130,7 @@
         </div>
 
         {{-- Quick Stats Card --}}
-        <div class="company-summary-card">
+        <div class="company-summary-card company-edit-card">
             <div class="company-summary-card-header">
                 <div class="company-summary-card-icon company-summary-card-icon--green">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -175,29 +175,47 @@
                     <div class="companies-form-grid">
                         <div class="companies-form-field companies-form-field--full">
                             <label class="companies-form-label">Company Name *</label>
-                            <input type="text" wire:model="name" class="companies-form-input" placeholder="Enter company name">
+                            <input type="text" wire:model="name" class="companies-form-input" placeholder="Enter company name" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                             @error('name') <p class="companies-form-error">{{ $message }}</p> @enderror
                         </div>
 
                         <div class="companies-form-field companies-form-field--full">
                             <label class="companies-form-label">Address</label>
-                            <textarea wire:model="address" class="companies-form-input companies-form-textarea" rows="2" placeholder="Street address, city, postal code"></textarea>
+                            <textarea wire:model="address" class="companies-form-input companies-form-textarea" rows="2" placeholder="Street address, city, postal code" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}></textarea>
                         </div>
 
                         <div class="companies-form-field">
                             <label class="companies-form-label">Phone</label>
-                            <input type="text" wire:model="phone" class="companies-form-input" placeholder="+44 20 1234 5678">
+                            <input type="text" wire:model="phone" class="companies-form-input" placeholder="+44 20 1234 5678" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                         </div>
 
                         <div class="companies-form-field">
                             <label class="companies-form-label">Email</label>
-                            <input type="email" wire:model="email" class="companies-form-input" placeholder="contact@company.com">
+                            <input type="email" wire:model="email" class="companies-form-input" placeholder="contact@company.com" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                             @error('email') <p class="companies-form-error">{{ $message }}</p> @enderror
                         </div>
 
+                        @if(auth()->user()->canManageAllTenants())
+                        <div class="companies-form-field">
+                            <label class="companies-form-label">Parent Company (Optional)</label>
+                            <select wire:model="parent_id" class="companies-form-input" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
+                                <option value="">-- None (Top Level Company) --</option>
+                                @foreach($potentialParents as $parent)
+                                    <option value="{{ $parent->id }}">{{ $parent->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('parent_id') <p class="companies-form-error">{{ $message }}</p> @enderror
+                        </div>
+                        @elseif($company->parent)
+                        <div class="companies-form-field">
+                            <label class="companies-form-label">Parent Company</label>
+                            <input type="text" class="companies-form-input" value="{{ $company->parent->name }}" disabled>
+                        </div>
+                        @endif
+
                         <div class="companies-form-field companies-form-field--full">
                             <label class="companies-form-toggle">
-                                <input type="checkbox" wire:model="is_active" class="companies-form-checkbox">
+                                <input type="checkbox" wire:model="is_active" class="companies-form-checkbox" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                                 <span class="companies-form-toggle-label">
                                     <span class="companies-form-toggle-text">Active Status</span>
                                     <span class="companies-form-toggle-hint">Company will be available for selection in visits</span>
@@ -256,6 +274,7 @@
                                 <span class="company-user-status company-user-status--inactive">Inactive</span>
                                 @endif
                             </div>
+                            @can('manageCompanies', App\Models\User::class)
                             <button type="button" wire:click="editCompanyUser({{ $user->id }})" class="company-user-edit-btn">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -263,6 +282,7 @@
                                 </svg>
                                 Edit
                             </button>
+                            @endcan
                         </div>
                         @endforeach
                     </div>
@@ -278,6 +298,7 @@
                     </div>
                     @endif
 
+                    @can('manageCompanies', App\Models\User::class)
                     <button type="button" wire:click="createCompanyUser" class="company-add-user-btn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                             <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -285,6 +306,7 @@
                         </svg>
                         <span>Add User</span>
                     </button>
+                    @endcan
                 </div>
             </div>
         </div>
@@ -308,13 +330,13 @@
                 <div class="company-edit-card-body">
                     <div class="companies-form-field">
                         <label class="companies-form-label">Contract Start Date</label>
-                        <input type="date" wire:model="contract_start_date" class="companies-form-input">
+                        <input type="date" wire:model="contract_start_date" class="companies-form-input" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                         @error('contract_start_date') <p class="companies-form-error">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="companies-form-field">
                         <label class="companies-form-label">Contract End Date</label>
-                        <input type="date" wire:model="contract_end_date" class="companies-form-input">
+                        <input type="date" wire:model="contract_end_date" class="companies-form-input" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                         @error('contract_end_date') <p class="companies-form-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -338,7 +360,7 @@
                     <div class="companies-form-field">
                         <label class="companies-form-label">Main Contact User</label>
                         @if($companyUsers->count() > 0)
-                        <select wire:model="main_contact_user_id" class="companies-form-input companies-form-select">
+                        <select wire:model="main_contact_user_id" class="companies-form-input companies-form-select" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                             <option value="">-- Select a user --</option>
                             @foreach($companyUsers as $user)
                             <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
@@ -353,19 +375,19 @@
 
                     <div class="companies-form-field">
                         <label class="companies-form-label">Alternative Contact Name</label>
-                        <input type="text" wire:model="contact_person" class="companies-form-input" placeholder="Name (if not a user)">
+                        <input type="text" wire:model="contact_person" class="companies-form-input" placeholder="Name (if not a user)" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                         @error('contact_person') <p class="companies-form-error">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="companies-form-field">
                         <label class="companies-form-label">Alternative Contact Email</label>
-                        <input type="email" wire:model="contact_person_email" class="companies-form-input" placeholder="email@example.com">
+                        <input type="email" wire:model="contact_person_email" class="companies-form-input" placeholder="email@example.com" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                         @error('contact_person_email') <p class="companies-form-error">{{ $message }}</p> @enderror
                     </div>
 
                     <div class="companies-form-field">
                         <label class="companies-form-label">Alternative Contact Phone</label>
-                        <input type="text" wire:model="contact_person_phone" class="companies-form-input" placeholder="+1 (555) 123-4567">
+                        <input type="text" wire:model="contact_person_phone" class="companies-form-input" placeholder="+1 (555) 123-4567" {{ !auth()->user()->can('manageCompanies', App\Models\User::class) ? 'disabled' : '' }}>
                         @error('contact_person_phone') <p class="companies-form-error">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -373,16 +395,18 @@
         </div>
 
         {{-- Actions Footer --}}
-        <div class="company-edit-actions">
-            <a href="{{ route('admin.companies') }}" class="companies-btn companies-btn--secondary">Cancel</a>
+        <div class="company-edit-actions company-edit-card">
+            <a href="{{ route('admin.companies') }}" class="companies-btn companies-btn--secondary">{{ auth()->user()->can('manageCompanies', App\Models\User::class) ? 'Cancel' : 'Back to Companies' }}</a>
+            @can('manageCompanies', App\Models\User::class)
             <button type="submit" class="companies-btn companies-btn--primary">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
                     <polyline points="17 21 17 13 7 13 7 21"></polyline>
                     <polyline points="7 3 7 8 15 8"></polyline>
                 </svg>
-                Save Changes
+                Save Changes 
             </button>
+            @endcan
         </div>
     </form>
 

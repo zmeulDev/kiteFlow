@@ -5,8 +5,8 @@
     <div class="buildings-header">
         <div class="buildings-header-top">
             <div>
-                <h1 class="buildings-title">Buildings & Entrances</h1>
-                <p class="buildings-subtitle">Manage buildings and their kiosk entrances</p>
+                <h1 class="buildings-title">Buildings</h1>
+                <p class="buildings-subtitle">Manage locations and their kiosk entrances</p>
             </div>
             <div class="buildings-stats">
                 <div class="buildings-stat">
@@ -24,7 +24,9 @@
                 <div class="buildings-stat">
                     <div class="buildings-stat-icon buildings-stat-icon--entrances">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path>
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path>
+                            <polyline points="10 17 15 12 10 7"></polyline>
+                            <line x1="15" y1="12" x2="3" y2="12"></line>
                         </svg>
                     </div>
                     <div class="buildings-stat-content">
@@ -80,6 +82,7 @@
                 </svg>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search buildings by name or address...">
             </div>
+            @can('manageBuildings', App\Models\User::class)
             <button wire:click="createBuilding" class="buildings-add-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -87,6 +90,7 @@
                 </svg>
                 <span>Add Building</span>
             </button>
+            @endcan
         </div>
     </div>
 
@@ -126,38 +130,49 @@
                     @endif
                 </div>
 
+                @can('viewBuildings', App\Models\User::class)
                 <div class="building-actions">
-                    <a href="{{ route('admin.buildings.edit', $building->id) }}" class="building-action-btn building-action-btn--edit" title="Manage Building">
+                    <a href="{{ route('admin.buildings.edit', $building->id) }}" class="building-action-btn building-action-btn--edit" title="{{ auth()->user()->can('manageBuildings', App\Models\User::class) ? 'Manage Building' : 'View Details' }}">
+                        @if(auth()->user()->can('manageBuildings', App\Models\User::class))
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                         </svg>
-                        Manage Building
+                        @else
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        @endif
                     </a>
                 </div>
+                @endcan
             </div>
 
             {{-- Entrances & Spaces Summary --}}
-            <div class="building-entrances" style="margin-top: 1.5rem; display: flex; gap: 2rem;">
-                <div>
-                    <span style="font-size: 0.875rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Entrances</span>
-                    <span style="font-weight: 600; font-size: 1.125rem; color: #111827;">{{ $building->entrances->count() }}</span>
-                </div>
-                <div>
-                    <span style="font-size: 0.875rem; color: #6b7280; display: block; margin-bottom: 0.25rem;">Meeting Rooms</span>
-                    <span style="font-weight: 600; font-size: 1.125rem; color: #111827;">{{ $building->spaces->count() }}</span>
+            <div class="building-entrances">
+                <div class="entrances-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                    <div class="entrance-card entrance-card--{{ $building->entrances->count() > 0 ? 'active' : 'inactive' }}" style="padding: 0.875rem 1rem;">
+                        <div style="font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Entrances</div>
+                        <div style="font-weight: 800; font-size: 1.25rem; color: var(--text-primary);">{{ $building->entrances->count() }}</div>
+                    </div>
+                    <div class="entrance-card entrance-card--{{ $building->spaces->count() > 0 ? 'active' : 'inactive' }}" style="padding: 0.875rem 1rem;">
+                        <div style="font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.25rem;">Meeting Rooms</div>
+                        <div style="font-weight: 800; font-size: 1.25rem; color: var(--text-primary);">{{ $building->spaces->count() }}</div>
+                    </div>
                 </div>
             </div>
         </div>
         @empty
         <div class="buildings-empty">
-            <div class="buildings-empty-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <div class="buildings-empty-icon" style="width: 80px; height: 80px; border-radius: 20px; background: linear-gradient(135deg, rgba(255, 75, 75, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                 </svg>
             </div>
-            <p class="buildings-empty-text">{{ $search ? 'No buildings found matching your search.' : 'No buildings yet. Add your first building to get started.' }}</p>
+            <h3 style="font-size: 1.125rem; font-weight: 700; color: var(--text-primary); margin: 0 0 0.5rem;">{{ $search ? 'No matches found' : 'No buildings yet' }}</h3>
+            <p class="buildings-empty-text">{{ $search ? 'Try adjusting your search terms.' : 'Add your first building to start managing kiosk entrances.' }}</p>
         </div>
         @endforelse
 
@@ -219,6 +234,5 @@
         </div>
     </div>
     @endif
-    
-</div>
+
 </div>

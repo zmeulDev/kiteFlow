@@ -14,6 +14,7 @@ class Space extends Model
         'name',
         'amenities',
         'is_active',
+        'capacity',
     ];
 
     protected function casts(): array
@@ -27,5 +28,10 @@ class Space extends Model
     public function building(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(Building::class);
+    }
+
+    public function visits(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Visit::class);
     }
 }

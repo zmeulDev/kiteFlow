@@ -45,7 +45,7 @@
                 </a>
                 @endcan
 
-                @if(auth()->user()->can('manageCompanies', App\Models\User::class) || auth()->user()->can('manageBuildings', App\Models\User::class) || auth()->user()->can('manageUsers', App\Models\User::class))
+                @if(auth()->user()->can('viewCompanies', App\Models\User::class) || auth()->user()->can('viewBuildings', App\Models\User::class) || auth()->user()->can('viewUsers', App\Models\User::class))
                 <div class="admin-nav-dropdown" x-data="{ open: false }">
                     <button @click="open = !open" class="admin-nav-link admin-nav-link--dropdown {{ request()->routeIs('admin.companies') || request()->routeIs('admin.buildings') || request()->routeIs('admin.users') ? 'admin-nav-link--active' : '' }}">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -58,7 +58,7 @@
                         </svg>
                     </button>
                     <div class="admin-nav-dropdown-menu" x-show="open" @click.away="open = false" x-transition>
-                        @can('manageCompanies', App\Models\User::class)
+                        @can('viewCompanies', App\Models\User::class)
                         <a href="{{ route('admin.companies') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.companies') ? 'admin-nav-dropdown-link--active' : '' }}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
@@ -68,7 +68,7 @@
                         </a>
                         @endcan
 
-                        @can('manageBuildings', App\Models\User::class)
+                        @can('viewBuildings', App\Models\User::class)
                         <a href="{{ route('admin.buildings') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.buildings') ? 'admin-nav-dropdown-link--active' : '' }}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -78,7 +78,7 @@
                         </a>
                         @endcan
 
-                        @can('manageUsers', App\Models\User::class)
+                        @can('viewUsers', App\Models\User::class)
                         <a href="{{ route('admin.users') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.users') ? 'admin-nav-dropdown-link--active' : '' }}">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -127,12 +127,6 @@
                             </svg>
                             NDA Settings
                         </a>
-                        <a href="{{ route('admin.settings.retention') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.settings.retention') ? 'admin-nav-dropdown-link--active' : '' }}">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <circle cx="12" cy="12" r="10"></circle>
-                                <polyline points="12 6 12 12 16 14"></polyline>
-                            </svg>
-                            Data Retention
                         </a>
                         @endif
                         <a href="{{ route('admin.settings.rbac') }}" class="admin-nav-dropdown-link {{ request()->routeIs('admin.settings.rbac') ? 'admin-nav-dropdown-link--active' : '' }}">
@@ -280,8 +274,6 @@
             <a href="{{ route('admin.settings.nda') }}" class="admin-nav-mobile-link {{ request()->routeIs('admin.settings.nda') ? 'admin-nav-mobile-link--active' : '' }}">
                 NDA Settings
             </a>
-            <a href="{{ route('admin.settings.retention') }}" class="admin-nav-mobile-link {{ request()->routeIs('admin.settings.retention') ? 'admin-nav-mobile-link--active' : '' }}">
-                Data Retention
             </a>
             @endif
             <a href="{{ route('admin.settings.rbac') }}" class="admin-nav-mobile-link {{ request()->routeIs('admin.settings.rbac') ? 'admin-nav-mobile-link--active' : '' }}">

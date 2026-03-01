@@ -28,6 +28,11 @@ class UserList extends Component
     public ?int $company_id = null;
     public string $notes = '';
 
+    public function mount(): void
+    {
+        abort_if(!auth()->user()->can('viewUsers', \App\Models\User::class), 403);
+    }
+
     protected function rules(): array
     {
         $rules = [
@@ -35,7 +40,7 @@ class UserList extends Component
             'email' => 'required|email|max:255|unique:users,email',
             'phone' => 'nullable|string|max:50',
             'password' => 'required|string|min:8',
-            'role' => 'required|in:' . implode(',', array_keys(\App\Models\User::getRoles())),
+            'role' => 'required|in:' . implode(',', array_keys(auth()->user()->getAssignableRoles())),
             'is_active' => 'boolean',
             'company_id' => 'nullable|exists:companies,id',
             'notes' => 'nullable|string|max:1000',
@@ -56,15 +61,17 @@ class UserList extends Component
 
     public function createUser(): void
     {
+        abort_if(!auth()->user()->can('manageUsers', \App\Models\User::class), 403);
         $this->resetForm();
         $this->showModal = true;
     }
 
     public function editUser(int $userId): void
     {
+        abort_if(!auth()->user()->can('manageUsers', \App\Models\User::class), 403);
         $query = User::query();
-        if (!auth()->user()->isAdmin()) {
-            $query->where('company_id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $query->whereIn('company_id', auth()->user()->getManagedCompanyIds());
         }
         $user = $query->findOrFail($userId);
         
@@ -82,18 +89,23 @@ class UserList extends Component
 
     public function save(): void
     {
-        $this->validate();
+        abort_if(!auth()->user()->can('manageUsers', \App\Models\User::class), 403);
+        $this->validate($this->rules());
 
         if ($this->editingUserId) {
             $query = User::query();
-            if (!auth()->user()->isAdmin()) {
-                $query->where('company_id', auth()->user()->company_id);
+            if (!auth()->user()->canManageAllTenants()) {
+                $query->whereIn('company_id', auth()->user()->getManagedCompanyIds());
             }
             $user = $query->findOrFail($this->editingUserId);
             
-            // Re-enforce company_id for non-admins to prevent them moving a user to another company
-            if (!auth()->user()->isAdmin()) {
-                $this->company_id = auth()->user()->company_id;
+            // Re-enforce company_id for non-global users to prevent them moving a user to another company
+            // Re-enforce company_id for non-global users to prevent them moving a user outside their hierarchy
+            if (!auth()->user()->canManageAllTenants()) {
+                $managedIds = auth()->user()->getManagedCompanyIds();
+                if (!in_array((int)$this->company_id, array_map('intval', $managedIds))) {
+                    $this->company_id = auth()->user()->company_id;
+                }
             }
 
             $data = [
@@ -112,8 +124,11 @@ class UserList extends Component
             session()->flash('message', 'User updated successfully.');
         } else {
             // Force scoped properties
-            if (!auth()->user()->isAdmin()) {
-                $this->company_id = auth()->user()->company_id;
+            if (!auth()->user()->canManageAllTenants()) {
+                $managedIds = auth()->user()->getManagedCompanyIds();
+                if (!in_array((int)$this->company_id, array_map('intval', $managedIds))) {
+                    $this->company_id = auth()->user()->company_id;
+                }
                 
                 // Tenants should not be able to create God Mode admins
                 if ($this->role === 'admin') {
@@ -165,14 +180,15 @@ class UserList extends Component
 
     public function deleteUser(int $userId): void
     {
+        abort_if(!auth()->user()->can('manageUsers', \App\Models\User::class), 403);
         if ($userId === auth()->id()) {
             session()->flash('error', 'You cannot delete your own account.');
             return;
         }
 
         $query = User::query();
-        if (!auth()->user()->isAdmin()) {
-            $query->where('company_id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $query->whereIn('company_id', auth()->user()->getManagedCompanyIds());
         }
         $query->findOrFail($userId)->delete();
         session()->flash('message', 'User deleted successfully.');
@@ -195,8 +211,8 @@ class UserList extends Component
     {
         $query = User::query()->with('company');
         
-        if (!auth()->user()->isAdmin()) {
-            $query->where('company_id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $query->whereIn('company_id', auth()->user()->getManagedCompanyIds());
         }
 
         $users = $query->clone()
@@ -218,8 +234,8 @@ class UserList extends Component
         $adminUsers = $query->clone()->where('role', 'admin')->count();
 
         $companiesQuery = \App\Models\Company::where('is_active', true)->orderBy('name');
-        if (!auth()->user()->isAdmin()) {
-            $companiesQuery->where('id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $companiesQuery->whereIn('id', auth()->user()->getManagedCompanyIds());
         }
         $companies = $companiesQuery->get();
 

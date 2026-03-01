@@ -18,6 +18,7 @@ class Visit extends Model
         'host_name',
         'host_email',
         'purpose',
+        'notes',
         'check_in_at',
         'check_out_at',
         'status',
@@ -28,6 +29,7 @@ class Visit extends Model
         'nda_consent_at',
         'signature',
         'photo_path',
+        'people_count',
     ];
 
     protected function casts(): array

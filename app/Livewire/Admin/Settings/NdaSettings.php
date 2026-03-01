@@ -22,6 +22,8 @@ class NdaSettings extends Component
 
     public function mount(): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $firstKiosk = KioskSetting::first();
         $this->default_nda_text = $firstKiosk?->nda_text ?? 'I agree to maintain the confidentiality of any proprietary information I may encounter during my visit.';
         $this->show_nda_globally = KioskSetting::where('show_nda', true)->exists();

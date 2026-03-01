@@ -14,6 +14,11 @@ class AdminPolicy
         return in_array($user->role, ['admin', 'administrator', 'tenant', 'receptionist', 'viewer']);
     }
 
+    public function viewUsers(User $user): bool
+    {
+        return $user->hasPermission('view_users') || $user->hasPermission('manage_users');
+    }
+
     public function manageUsers(User $user): bool
     {
         return $user->hasPermission('manage_users');
@@ -29,9 +34,19 @@ class AdminPolicy
         return $user->hasPermission('manage_visits');
     }
 
+    public function viewCompanies(User $user): bool
+    {
+        return $user->hasPermission('view_companies') || $user->hasPermission('manage_companies');
+    }
+
     public function manageCompanies(User $user): bool
     {
         return $user->hasPermission('manage_companies');
+    }
+
+    public function viewBuildings(User $user): bool
+    {
+        return $user->hasPermission('view_buildings') || $user->hasPermission('manage_buildings');
     }
 
     public function manageBuildings(User $user): bool

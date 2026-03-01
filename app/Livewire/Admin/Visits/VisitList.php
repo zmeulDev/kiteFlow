@@ -32,34 +32,55 @@ class VisitList extends Component
 
     // Scheduling modal properties
     public bool $showScheduleModal = false;
-    public ?int $schedule_company_id = null;
+    public int $currentStep = 1;
+    public ?string $schedule_company_id = null;
     public ?int $schedule_host_id = null;
-    public string $schedule_first_name = '';
-    public string $schedule_last_name = '';
-    public string $schedule_email = '';
-    public string $schedule_phone = '';
-    public ?int $schedule_visitor_company_id = null;
     public ?int $schedule_entrance_id = null;
     public ?int $schedule_space_id = null;
     public string $schedule_purpose = '';
+    public string $schedule_notes = '';
     public string $schedule_date = '';
     public string $schedule_time = '';
+    public int $schedule_people_count = 1;
+    
+    public array $schedule_visitors = [];
 
     protected function rules(): array
     {
-        return [
-            'schedule_company_id' => 'required|exists:companies,id',
+        $rules = [
+            'schedule_company_id' => ['required', function ($attribute, $value, $fail) {
+                if ($value !== 'main' && !\App\Models\Company::where('id', $value)->exists()) {
+                    $fail('The selected company is invalid.');
+                }
+            }],
             'schedule_host_id' => 'nullable|exists:users,id',
-            'schedule_first_name' => 'required|string|max:255',
-            'schedule_last_name' => 'required|string|max:255',
-            'schedule_email' => 'required|email|max:255',
-            'schedule_phone' => 'nullable|string|max:50',
-            'schedule_visitor_company_id' => 'nullable|exists:companies,id',
             'schedule_entrance_id' => 'required|exists:entrances,id',
             'schedule_space_id' => 'nullable|exists:spaces,id',
             'schedule_purpose' => 'nullable|string|max:255',
+            'schedule_notes' => 'nullable|string',
             'schedule_date' => 'required|date|after_or_equal:today',
             'schedule_time' => 'required',
+            'schedule_people_count' => 'required|integer|min:1',
+        ];
+
+        if ($this->currentStep === 2) {
+            $rules['schedule_visitors'] = 'required|array|min:' . $this->schedule_people_count;
+            $rules['schedule_visitors.*.first_name'] = 'required|string|max:255';
+            $rules['schedule_visitors.*.last_name'] = 'required|string|max:255';
+            $rules['schedule_visitors.*.email'] = 'required|email|max:255';
+            $rules['schedule_visitors.*.phone'] = 'nullable|string|max:50';
+        }
+
+        return $rules;
+    }
+
+    protected function messages(): array
+    {
+        return [
+            'schedule_visitors.*.first_name.required' => 'First name is required.',
+            'schedule_visitors.*.last_name.required' => 'Last name is required.',
+            'schedule_visitors.*.email.required' => 'Email is required.',
+            'schedule_visitors.*.email.email' => 'Please enter a valid email.',
         ];
     }
 
@@ -107,9 +128,9 @@ class VisitList extends Component
     {
         $this->resetScheduleForm();
         
-        // Auto-select host and company for non-admin users
+        // Auto-select host and company for non-global managers
         $user = auth()->user();
-        if (!$user->isAdmin()) {
+        if (!$user->canManageAllTenants()) {
             $this->schedule_company_id = $user->company_id;
             
             // Viewers can only schedule for themselves
@@ -129,18 +150,17 @@ class VisitList extends Component
 
     public function resetScheduleForm(): void
     {
+        $this->currentStep = 1;
         $this->schedule_company_id = null;
         $this->schedule_host_id = null;
-        $this->schedule_first_name = '';
-        $this->schedule_last_name = '';
-        $this->schedule_email = '';
-        $this->schedule_phone = '';
-        $this->schedule_visitor_company_id = null;
         $this->schedule_entrance_id = null;
         $this->schedule_space_id = null;
         $this->schedule_purpose = '';
+        $this->schedule_notes = '';
         $this->schedule_date = '';
         $this->schedule_time = '';
+        $this->schedule_people_count = 1;
+        $this->schedule_visitors = [];
         $this->resetErrorBag();
     }
 
@@ -150,13 +170,15 @@ class VisitList extends Component
             return null;
         }
         
+        $user = auth()->user();
         $query = Visit::with(['visitor.company', 'entrance.building', 'host', 'space']);
-        if (!auth()->user()->isAdmin()) {
-            if (auth()->user()->role === 'viewer') {
-                 $query->where('host_id', auth()->id());
+        if (!$user->canManageAllTenants()) {
+            if ($user->role === 'viewer') {
+                 $query->where('host_id', $user->id);
             } else {
-                 $query->whereHas('host', function ($q) {
-                     $q->where('company_id', auth()->user()->company_id);
+                 $managedCompanyIds = $user->getManagedCompanyIds();
+                 $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                     $q->whereIn('company_id', $managedCompanyIds);
                  });
             }
         }
@@ -171,9 +193,16 @@ class VisitList extends Component
         }
         
         $user = auth()->user();
-        $query = User::where('company_id', $this->schedule_company_id)
-            ->where('is_active', true)
-            ->orderBy('name');
+        
+        if ($this->schedule_company_id === 'main') {
+            $query = User::whereNull('company_id')
+                ->where('is_active', true)
+                ->orderBy('name');
+        } else {
+            $query = User::where('company_id', $this->schedule_company_id)
+                ->where('is_active', true)
+                ->orderBy('name');
+        }
             
         // If the user is a viewer, they should only see themselves in the host list
         if (!$user->isAdmin() && $user->role === 'viewer') {
@@ -184,24 +213,26 @@ class VisitList extends Component
     }
 
     #[On('confirmCheckOut')]
-    public function confirmCheckOut(int $visitId): void
+    public function confirmCheckOut(int $visitId, \App\Services\VisitService $visitService): void
     {
-        $this->checkOut($visitId);
+        $this->checkOut($visitId, $visitService);
         $this->closeModal();
     }
 
     #[On('confirmCheckIn')]
-    public function confirmCheckIn(int $visitId): void
+    public function confirmCheckIn(int $visitId, \App\Services\VisitService $visitService): void
     {
-        $this->checkIn($visitId);
+        $this->checkIn($visitId, $visitService);
     }
 
     public function showCheckOutConfirm(int $visitId): void
     {
+        $user = auth()->user();
         $query = Visit::with('visitor');
-        if (!auth()->user()->isAdmin()) {
-            $query->whereHas('host', function ($q) {
-                $q->where('company_id', auth()->user()->company_id);
+        if (!$user->canManageAllTenants()) {
+            $managedCompanyIds = $user->getManagedCompanyIds();
+            $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                $q->whereIn('company_id', $managedCompanyIds);
             });
         }
         $visit = $query->findOrFail($visitId);
@@ -221,10 +252,12 @@ class VisitList extends Component
 
     public function showCheckInConfirm(int $visitId): void
     {
+        $user = auth()->user();
         $query = Visit::with('visitor');
-        if (!auth()->user()->isAdmin()) {
-            $query->whereHas('host', function ($q) {
-                $q->where('company_id', auth()->user()->company_id);
+        if (!$user->canManageAllTenants()) {
+            $managedCompanyIds = $user->getManagedCompanyIds();
+            $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                $q->whereIn('company_id', $managedCompanyIds);
             });
         }
         $visit = $query->findOrFail($visitId);
@@ -244,13 +277,15 @@ class VisitList extends Component
 
     public function checkIn(int $visitId, VisitService $visitService): void
     {
+        $user = auth()->user();
         $query = Visit::query();
-        if (!auth()->user()->isAdmin()) {
-            if (auth()->user()->role === 'viewer') {
-                $query->where('host_id', auth()->id());
+        if (!$user->canManageAllTenants()) {
+            if ($user->role === 'viewer') {
+                $query->where('host_id', $user->id);
             } else {
-                $query->whereHas('host', function ($q) {
-                    $q->where('company_id', auth()->user()->company_id);
+                $managedCompanyIds = $user->getManagedCompanyIds();
+                $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                    $q->whereIn('company_id', $managedCompanyIds);
                 });
             }
         }
@@ -262,13 +297,15 @@ class VisitList extends Component
 
     public function checkOut(int $visitId, VisitService $visitService): void
     {
+        $user = auth()->user();
         $query = Visit::query();
-        if (!auth()->user()->isAdmin()) {
-            if (auth()->user()->role === 'viewer') {
-                $query->where('host_id', auth()->id());
+        if (!$user->canManageAllTenants()) {
+            if ($user->role === 'viewer') {
+                $query->where('host_id', $user->id);
             } else {
-                $query->whereHas('host', function ($q) {
-                    $q->where('company_id', auth()->user()->company_id);
+                $managedCompanyIds = $user->getManagedCompanyIds();
+                $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                    $q->whereIn('company_id', $managedCompanyIds);
                 });
             }
         }
@@ -277,13 +314,132 @@ class VisitList extends Component
         session()->flash('message', 'Visitor checked out successfully.');
     }
 
+    public function nextStep(): void
+    {
+        // Only validate step 1 fields
+        $this->validate([
+            'schedule_company_id' => ['required', function ($attribute, $value, $fail) {
+                if ($value !== 'main' && !\App\Models\Company::where('id', $value)->exists()) {
+                    $fail('The selected company is invalid.');
+                }
+            }],
+            'schedule_entrance_id' => 'required|exists:entrances,id',
+            'schedule_space_id' => 'nullable|exists:spaces,id',
+            'schedule_date' => 'required|date|after_or_equal:today',
+            'schedule_time' => 'required',
+            'schedule_people_count' => 'required|integer|min:1',
+        ]);
+
+        $this->performStep1Validations();
+
+        if ($this->getErrorBag()->isNotEmpty()) {
+            return;
+        }
+
+        // Initialize visitors array dynamically based on count if empty or mismatched
+        if (count($this->schedule_visitors) !== (int)$this->schedule_people_count) {
+            $currentVisitors = $this->schedule_visitors;
+            $this->schedule_visitors = [];
+            for ($i = 0; $i < $this->schedule_people_count; $i++) {
+                $this->schedule_visitors[] = [
+                    'first_name' => $currentVisitors[$i]['first_name'] ?? '',
+                    'last_name' => $currentVisitors[$i]['last_name'] ?? '',
+                    'email' => $currentVisitors[$i]['email'] ?? '',
+                    'phone' => $currentVisitors[$i]['phone'] ?? '',
+                ];
+            }
+        }
+
+        $this->currentStep = 2;
+    }
+
+    public function previousStep(): void
+    {
+        $this->currentStep = 1;
+    }
+
+    protected function performStep1Validations(): void
+    {
+        // 1. Check Company Contract
+        $company = null;
+        if ($this->schedule_company_id !== 'main') {
+            $company = Company::find($this->schedule_company_id);
+            if ($company) {
+                if (!$company->is_active) {
+                    $this->addError('schedule_company_id', 'The selected company is currently inactive.');
+                    return;
+                }
+
+                $now = now()->startOfDay();
+                if ($company->contract_start_date && $company->contract_start_date->startOfDay() > $now) {
+                    $this->addError('schedule_company_id', 'The company contract has not started yet.');
+                    return;
+                }
+
+                if ($company->contract_end_date && $company->contract_end_date->endOfDay() < $now) {
+                    $this->addError('schedule_company_id', 'The company contract has expired.');
+                    return;
+                }
+            }
+        }
+
+        // 2. Check Entrance and Building Status
+        $entrance = Entrance::with('building')->find($this->schedule_entrance_id);
+        if ($entrance) {
+            if (!$entrance->is_active) {
+                $this->addError('schedule_entrance_id', 'The selected entrance is currently inactive.');
+                return;
+            }
+
+            if ($entrance->building && !$entrance->building->is_active) {
+                $this->addError('schedule_entrance_id', 'The building for this entrance is currently inactive.');
+                return;
+            }
+        }
+
+        // 3. Check Space Status and Capacity
+        $space = $this->schedule_space_id ? Space::find($this->schedule_space_id) : null;
+        if ($space) {
+            if (!$space->is_active) {
+                $this->addError('schedule_space_id', 'The selected meeting room is currently inactive.');
+                return;
+            }
+
+            if ($space->capacity > 0 && $this->schedule_people_count > $space->capacity) {
+                $this->addError('schedule_people_count', "The selected room exceeds its capacity of {$space->capacity} people.");
+                return;
+            }
+            
+            // 4. Check Space Availability (Simple overlap check)
+            try {
+                $scheduledAt = \Carbon\Carbon::parse("{$this->schedule_date} {$this->schedule_time}");
+                $overlap = Visit::where('space_id', $space->id)
+                    ->where('status', '!=', 'cancelled')
+                    ->where(function ($q) use ($scheduledAt) {
+                        $q->whereBetween('scheduled_at', [
+                            $scheduledAt->copy()->subMinutes(59),
+                            $scheduledAt->copy()->addMinutes(59)
+                        ]);
+                    })->exists();
+
+                if ($overlap) {
+                     $this->addError('schedule_space_id', 'The selected room is already booked around this time.');
+                     return;
+                }
+            } catch (\Exception $e) {}
+        }
+    }
+
     public function scheduleVisit(VisitSchedulingService $schedulingService): void
     {
         $user = auth()->user();
         
-        // Enforce company ID strictly if not admin
-        if (!$user->isAdmin()) {
-            $this->schedule_company_id = $user->company_id;
+        // Enforce company ID strictly if not global manager
+        if (!$user->canManageAllTenants()) {
+            $managedIds = $user->getManagedCompanyIds();
+            if (!in_array((int)$this->schedule_company_id, array_map('intval', $managedIds))) {
+                $this->schedule_company_id = $user->company_id ? (string) $user->company_id : 'main';
+            }
             
             // Viewers MUST be the host
             if ($user->role === 'viewer') {
@@ -293,52 +449,71 @@ class VisitList extends Component
 
         $this->validate();
 
+        $this->performStep1Validations();
+
+        if ($this->getErrorBag()->isNotEmpty()) {
+            $this->currentStep = 1; // go back if someone tried to submit with invalid step 1
+            return;
+        }
+
         $entrance = Entrance::findOrFail($this->schedule_entrance_id);
         $space = $this->schedule_space_id ? Space::find($this->schedule_space_id) : null;
         $host = $this->schedule_host_id ? User::find($this->schedule_host_id) : null;
-        $visitorCompany = $this->schedule_visitor_company_id ? Company::find($this->schedule_visitor_company_id) : null;
 
         $scheduledAt = \Carbon\Carbon::parse("{$this->schedule_date} {$this->schedule_time}");
-
-        $visitorData = [
-            'first_name' => $this->schedule_first_name,
-            'last_name' => $this->schedule_last_name,
-            'email' => $this->schedule_email,
-            'phone' => $this->schedule_phone ?: null,
-        ];
-
+        
         $visitData = [
             'purpose' => $this->schedule_purpose ?: null,
+            'notes' => $this->schedule_notes ?: null,
             'scheduled_at' => $scheduledAt,
         ];
 
+        $codes = [];
+
         try {
-            $visit = $schedulingService->scheduleVisit(
-                $visitorData,
-                $visitData,
-                $entrance,
-                $host,
-                $visitorCompany,
-                $space
-            );
+            // Schedule individual visit per person
+            foreach ($this->schedule_visitors as $visitorInput) {
+                $visitorData = [
+                    'first_name' => $visitorInput['first_name'],
+                    'last_name' => $visitorInput['last_name'],
+                    'email' => $visitorInput['email'],
+                    'phone' => $visitorInput['phone'] ?: null,
+                ];
+
+                $visit = $schedulingService->scheduleVisit(
+                    $visitorData,
+                    $visitData,
+                    $entrance,
+                    $host,
+                    null, // removed visitor company
+                    $space,
+                    1 // Individual visit now, per requirement
+                );
+                
+                $codes[] = $visit->check_in_code;
+            }
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            $this->addError('schedule_visitors', 'An error occurred while scheduling: ' . $e->getMessage());
+            return;
         }
 
-        session()->flash('message', "Visit scheduled successfully. Check-in code: {$visit->check_in_code}");
+        $codeText = implode(', ', $codes);
+        session()->flash('message', "Visit(s) scheduled successfully. Check-in codes: {$codeText}");
         $this->closeScheduleModal();
     }
 
     public function render()
     {
+        $user = auth()->user();
         $query = Visit::with(['visitor.company', 'entrance.building', 'host', 'space']);
         
-        if (!auth()->user()->isAdmin()) {
-            if (auth()->user()->role === 'viewer') {
-                $query->where('host_id', auth()->id());
+        if (!$user->canManageAllTenants()) {
+            if ($user->role === 'viewer') {
+                $query->where('host_id', $user->id);
             } else {
-                $query->whereHas('host', function ($q) {
-                    $q->where('company_id', auth()->user()->company_id);
+                $managedCompanyIds = $user->getManagedCompanyIds();
+                $query->whereHas('host', function ($q) use ($managedCompanyIds) {
+                    $q->whereIn('company_id', $managedCompanyIds);
                 });
             }
         }
@@ -378,9 +553,10 @@ class VisitList extends Component
         $editingVisit = $this->editingVisit;
         $hostUsers = $this->hostUsers;
         
+        $companyUser = auth()->user();
         $companiesQuery = Company::where('is_active', true)->orderBy('name');
-        if (!auth()->user()->isAdmin()) {
-            $companiesQuery->where('id', auth()->user()->company_id);
+        if (!$companyUser->canManageAllTenants()) {
+            $companiesQuery->whereIn('id', $companyUser->getManagedCompanyIds());
         }
         $companies = $companiesQuery->get();
         
@@ -390,10 +566,31 @@ class VisitList extends Component
         if ($this->schedule_entrance_id) {
             $selectedEntrance = Entrance::find($this->schedule_entrance_id);
             if ($selectedEntrance) {
-                $availableSpaces = Space::where('building_id', $selectedEntrance->building_id)
-                    ->where('is_active', true)
-                    ->orderBy('name')
-                    ->get();
+                $query = Space::where('building_id', $selectedEntrance->building_id)
+                    ->where('is_active', true);
+
+                if ($this->schedule_people_count > 0) {
+                    $query->where(function ($q) {
+                        $q->whereNull('capacity')->orWhere('capacity', '>=', (int)$this->schedule_people_count);
+                    });
+                }
+
+                if ($this->schedule_date && $this->schedule_time) {
+                    try {
+                        $scheduledAt = \Carbon\Carbon::parse("{$this->schedule_date} {$this->schedule_time}");
+                        $query->whereDoesntHave('visits', function ($q) use ($scheduledAt) {
+                            $q->where('status', '!=', 'cancelled')
+                              ->whereBetween('scheduled_at', [
+                                  $scheduledAt->copy()->subMinutes(59),
+                                  $scheduledAt->copy()->addMinutes(59)
+                              ]);
+                        });
+                    } catch (\Exception $e) {
+                        // Invalid date/time format, ignore filtering
+                    }
+                }
+
+                $availableSpaces = $query->orderBy('name')->get();
             }
         }
 

@@ -24,6 +24,7 @@ class CompanyEdit extends Component
     public ?string $contract_start_date = null;
     public ?string $contract_end_date = null;
     public ?int $main_contact_user_id = null;
+    public ?int $parent_id = null;
 
     // Company users list
     public $companyUsers = [];
@@ -43,7 +44,9 @@ class CompanyEdit extends Component
 
     public function mount(Company $company): void
     {
-        if (!auth()->user()->isAdmin() && auth()->user()->company_id !== $company->id) {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
+
+        if (!auth()->user()->canManageAllTenants() && auth()->user()->company_id !== $company->id) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -59,6 +62,7 @@ class CompanyEdit extends Component
         $this->contract_start_date = $company->contract_start_date?->format('Y-m-d');
         $this->contract_end_date = $company->contract_end_date?->format('Y-m-d');
         $this->main_contact_user_id = $company->main_contact_user_id;
+        $this->parent_id = $company->parent_id;
 
         $this->loadCompanyUsers();
     }
@@ -84,6 +88,15 @@ class CompanyEdit extends Component
             'contract_start_date' => 'nullable|date',
             'contract_end_date' => 'nullable|date|after_or_equal:contract_start_date',
             'main_contact_user_id' => 'nullable|exists:users,id',
+            'parent_id' => [
+                'nullable',
+                'exists:companies,id',
+                function ($attribute, $value, $fail) {
+                    if ($value == $this->company->id) {
+                        $fail('A company cannot be its own parent.');
+                    }
+                },
+            ],
         ];
     }
 
@@ -109,6 +122,7 @@ class CompanyEdit extends Component
 
     public function save(): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $this->validate();
 
         $this->company->update([
@@ -123,6 +137,7 @@ class CompanyEdit extends Component
             'contract_start_date' => $this->contract_start_date ?: null,
             'contract_end_date' => $this->contract_end_date ?: null,
             'main_contact_user_id' => $this->main_contact_user_id,
+            'parent_id' => $this->parent_id,
         ]);
 
         session()->flash('message', 'Company updated successfully.');
@@ -130,12 +145,14 @@ class CompanyEdit extends Component
 
     public function createCompanyUser(): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $this->resetUserForm();
         $this->showUserModal = true;
     }
 
     public function editCompanyUser(int $userId): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $user = User::findOrFail($userId);
 
         // Ensure user belongs to this company
@@ -157,6 +174,7 @@ class CompanyEdit extends Component
 
     public function saveUser(): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $this->validate($this->userRules());
 
         if ($this->editingUserId) {
@@ -177,7 +195,7 @@ class CompanyEdit extends Component
             session()->flash('message', 'User updated successfully.');
         } else {
             // Prevent non-admin tenants from upgrading to God Mode (already blocked in UserList as well, adding here for consistency)
-            if (!auth()->user()->isAdmin() && $this->user_role === 'admin') {
+            if (!auth()->user()->canManageAllTenants() && $this->user_role === 'admin') {
                 $this->user_role = 'viewer';
             }
 
@@ -214,6 +232,12 @@ class CompanyEdit extends Component
 
     public function render()
     {
-        return view('livewire.admin.companies.company-edit');
+        $potentialParents = Company::where('id', '!=', $this->company->id)
+            ->where('is_active', true)
+            ->whereNull('parent_id') // Avoid deep nesting for now to keep it simple, or allow it? 
+            ->orderBy('name')
+            ->get();
+
+        return view('livewire.admin.companies.company-edit', compact('potentialParents'));
     }
 }

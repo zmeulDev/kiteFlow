@@ -286,16 +286,16 @@
 
             <!-- Modal Footer -->
             <div class="visits-modal-footer">
-                <button wire:click="closeModal" class="btn btn-outline">Close</button>
+                <button wire:click="closeModal" class="visits-btn visits-btn--secondary">Close</button>
                 @if($editingVisit->status === 'pending')
-                <button wire:click="showCheckInConfirm({{ $editingVisit->id }})" class="btn">
+                <button wire:click="showCheckInConfirm({{ $editingVisit->id }})" class="visits-btn visits-btn--primary">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
                     </svg>
                     Check In
                 </button>
                 @elseif($editingVisit->status === 'checked_in')
-                <button wire:click="showCheckOutConfirm({{ $editingVisit->id }})" class="btn btn-danger">
+                <button wire:click="showCheckOutConfirm({{ $editingVisit->id }})" class="visits-btn visits-btn--primary">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
                     </svg>
@@ -327,134 +327,164 @@
             </div>
 
             <form wire:submit="scheduleVisit" class="visits-modal-body">
-                <!-- Company & Host Section -->
-                <div class="visits-schedule-section">
-                    <h4 class="visits-schedule-section-title">Host Company</h4>
-                    <div class="visits-schedule-grid">
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Company *</label>
-                            <select wire:model.live="schedule_company_id" class="visits-form-input" {{ !auth()->user()->isAdmin() ? 'disabled' : '' }}>
-                                <option value="">Select a company</option>
-                                @foreach($companies as $company)
-                                <option value="{{ $company->id }}">{{ $company->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('schedule_company_id') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Host User (Optional)</label>
-                            <select wire:model="schedule_host_id" class="visits-form-input" 
-                                {{ (!$schedule_company_id || (auth()->user()->role === 'viewer' && !auth()->user()->isAdmin())) ? 'disabled' : '' }}>
-                                @if(auth()->user()->role !== 'viewer' || auth()->user()->isAdmin())
-                                    <option value="">Select a host (optional)</option>
-                                @endif
-                                @foreach($hostUsers as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('schedule_host_id') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Visitor Section -->
-                <div class="visits-schedule-section">
-                    <h4 class="visits-schedule-section-title">Visitor Information</h4>
-                    <div class="visits-schedule-grid">
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">First Name *</label>
-                            <input type="text" wire:model="schedule_first_name" class="visits-form-input" placeholder="Visitor first name">
-                            @error('schedule_first_name') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Last Name *</label>
-                            <input type="text" wire:model="schedule_last_name" class="visits-form-input" placeholder="Visitor last name">
-                            @error('schedule_last_name') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Email *</label>
-                            <input type="email" wire:model="schedule_email" class="visits-form-input" placeholder="visitor@example.com">
-                            @error('schedule_email') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Phone</label>
-                            <input type="tel" wire:model="schedule_phone" class="visits-form-input" placeholder="+1 (555) 000-0000">
-                            @error('schedule_phone') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field visits-form-field--full">
-                            <label class="visits-form-label">Visitor's Company</label>
-                            <select wire:model="schedule_visitor_company_id" class="visits-form-input">
-                                <option value="">No company / Not specified</option>
-                                @foreach($companies as $company)
-                                <option value="{{ $company->id }}">{{ $company->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('schedule_visitor_company_id') <p class="visits-form-error">{{ $message }}</p> @enderror
+                <!-- Step 1: Scheduling Details -->
+                @if($currentStep === 1)
+                    <!-- Schedule & Capacity Section -->
+                    <div class="visits-schedule-section">
+                        <h4 class="visits-schedule-section-title">Schedule & Capacity</h4>
+                        <div class="visits-schedule-grid">
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Date *</label>
+                                <input type="date" 
+                                    wire:model.live="schedule_date" 
+                                    class="visits-form-input" 
+                                    min="{{ date('Y-m-d') }}">
+                                @error('schedule_date') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Time *</label>
+                                <input type="time" 
+                                    wire:model.live="schedule_time" 
+                                    class="visits-form-input">
+                                @error('schedule_time') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Number of People *</label>
+                                <input type="number" wire:model.live="schedule_people_count" class="visits-form-input" min="1" step="1">
+                                @error('schedule_people_count') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Purpose</label>
+                                <input type="text" wire:model="schedule_purpose" class="visits-form-input" placeholder="Meeting, Delivery, etc.">
+                                @error('schedule_purpose') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="visits-form-field visits-form-field--full">
+                                <label class="visits-form-label">Notes</label>
+                                <textarea wire:model="schedule_notes" class="visits-form-input" rows="2" placeholder="Any additional instructions or notes..."></textarea>
+                                @error('schedule_notes') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Visit Details Section -->
-                <div class="visits-schedule-section">
-                    <h4 class="visits-schedule-section-title">Visit Details</h4>
-                    <div class="visits-schedule-grid">
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Entrance *</label>
-                            <select wire:model.live="schedule_entrance_id" class="visits-form-input">
-                                <option value="">Select an entrance</option>
-                                @foreach($allEntrances as $entrance)
-                                <option value="{{ $entrance->id }}">{{ $entrance->name }} - {{ $entrance->building->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('schedule_entrance_id') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Meeting Room (Optional)</label>
-                            <select wire:model="schedule_space_id" class="visits-form-input" {{ !$schedule_entrance_id || $availableSpaces->isEmpty() ? 'disabled' : '' }}>
-                                <option value="">{{ $schedule_entrance_id ? ($availableSpaces->isEmpty() ? 'No spaces available' : 'Select a room') : 'Select entrance first' }}</option>
-                                @foreach($availableSpaces as $space)
-                                <option value="{{ $space->id }}">{{ $space->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('schedule_space_id') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Purpose</label>
-                            <input type="text" wire:model="schedule_purpose" class="visits-form-input" placeholder="Meeting, Delivery, etc.">
-                            @error('schedule_purpose') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Date *</label>
-                            <input type="text" 
-                                x-data 
-                                x-init="flatpickr($el, { dateFormat: 'Y-m-d', minDate: 'today' })" 
-                                wire:model="schedule_date" 
-                                class="visits-form-input" 
-                                placeholder="Select date (YYYY-MM-DD)">
-                            @error('schedule_date') <p class="visits-form-error">{{ $message }}</p> @enderror
-                        </div>
-                        <div class="visits-form-field">
-                            <label class="visits-form-label">Time *</label>
-                            <input type="text" 
-                                x-data 
-                                x-init="flatpickr($el, { enableTime: true, noCalendar: true, dateFormat: 'H:i', time_24hr: true })" 
-                                wire:model="schedule_time" 
-                                class="visits-form-input" 
-                                placeholder="Select time (HH:MM)">
-                            @error('schedule_time') <p class="visits-form-error">{{ $message }}</p> @enderror
+                    <!-- Host Company Section -->
+                    <div class="visits-schedule-section">
+                        <h4 class="visits-schedule-section-title">Host Company</h4>
+                        <div class="visits-schedule-grid">
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Company *</label>
+                                <select wire:model.live="schedule_company_id" class="visits-form-input" {{ (auth()->user()->role === 'viewer' || count($companies) <= 1 && !auth()->user()->canManageAllTenants()) ? 'disabled' : '' }}>
+                                    <option value="">Select a company</option>
+                                    @if(auth()->user()->canManageAllTenants())
+                                    <option value="main" class="font-semibold text-blue-600">★ {{ \App\Models\Setting::get('business_name', 'Main Tenant (Internal)') }}</option>
+                                    @endif
+                                    @foreach($companies as $company)
+                                    <option value="{{ $company->id }}">{{ $company->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('schedule_company_id') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Host User (Optional)</label>
+                                <select wire:model="schedule_host_id" class="visits-form-input" 
+                                    {{ (!$schedule_company_id || (auth()->user()->role === 'viewer' && !auth()->user()->canManageAllTenants())) ? 'disabled' : '' }}>
+                                    @if(auth()->user()->role !== 'viewer' || auth()->user()->canManageAllTenants())
+                                        <option value="">Select a host (optional)</option>
+                                    @endif
+                                    @foreach($hostUsers as $user)
+                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('schedule_host_id') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <div class="visits-modal-footer">
-                    <button type="button" wire:click="closeScheduleModal" class="btn btn-outline">Cancel</button>
-                    <button type="submit" class="btn">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                        </svg>
-                        Schedule Visit
-                    </button>
-                </div>
+                    <!-- Visit Details Section -->
+                    <div class="visits-schedule-section">
+                        <h4 class="visits-schedule-section-title">Location</h4>
+                        <div class="visits-schedule-grid">
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Entrance *</label>
+                                <select wire:model.live="schedule_entrance_id" class="visits-form-input">
+                                    <option value="">Select an entrance</option>
+                                    @foreach($allEntrances as $entrance)
+                                    <option value="{{ $entrance->id }}">{{ $entrance->name }} - {{ $entrance->building->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('schedule_entrance_id') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                            <div class="visits-form-field">
+                                <label class="visits-form-label">Meeting Room (Optional)</label>
+                                <select wire:model="schedule_space_id" class="visits-form-input" {{ !$schedule_entrance_id || $availableSpaces->isEmpty() ? 'disabled' : '' }}>
+                                    <option value="">{{ $schedule_entrance_id ? ($availableSpaces->isEmpty() ? 'No spaces available' : 'Select a room') : 'Select entrance first' }}</option>
+                                    @foreach($availableSpaces as $space)
+                                    <option value="{{ $space->id }}">{{ $space->name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('schedule_space_id') <p class="visits-form-error">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="visits-modal-footer">
+                        <button type="button" wire:click="closeScheduleModal" class="visits-btn visits-btn--secondary">Cancel</button>
+                        <button type="button" wire:click="nextStep" class="visits-btn visits-btn--primary">
+                            Next: Visitor Details
+                            <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                        </button>
+                    </div>
+                @endif
+
+                <!-- Step 2: Visitors Details -->
+                @if($currentStep === 2)
+                    <div class="visits-schedule-section">
+                        <h4 class="visits-schedule-section-title">Visitor Information</h4>
+                        <p class="text-xs text-gray-500 mb-4">You indicated {{ $schedule_people_count }} people for this visit. Please specify details for each person.</p>
+                        
+                        @for($i = 0; $i < $schedule_people_count; $i++)
+                            <div class="mb-6 p-4 border border-gray-100 rounded-lg bg-gray-50">
+                                <h5 class="text-sm font-medium text-gray-700 mb-3 border-b border-gray-200 pb-2">Person {{ $i + 1 }}</h5>
+                                <div class="visits-schedule-grid">
+                                    <div class="visits-form-field">
+                                        <label class="visits-form-label">First Name *</label>
+                                        <input type="text" wire:model="schedule_visitors.{{ $i }}.first_name" class="visits-form-input" placeholder="First name">
+                                        @error('schedule_visitors.'.$i.'.first_name') <p class="visits-form-error">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div class="visits-form-field">
+                                        <label class="visits-form-label">Last Name *</label>
+                                        <input type="text" wire:model="schedule_visitors.{{ $i }}.last_name" class="visits-form-input" placeholder="Last name">
+                                        @error('schedule_visitors.'.$i.'.last_name') <p class="visits-form-error">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div class="visits-form-field">
+                                        <label class="visits-form-label">Email *</label>
+                                        <input type="email" wire:model="schedule_visitors.{{ $i }}.email" class="visits-form-input" placeholder="Email address">
+                                        @error('schedule_visitors.'.$i.'.email') <p class="visits-form-error">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div class="visits-form-field">
+                                        <label class="visits-form-label">Phone</label>
+                                        <input type="tel" wire:model="schedule_visitors.{{ $i }}.phone" class="visits-form-input" placeholder="Phone number">
+                                        @error('schedule_visitors.'.$i.'.phone') <p class="visits-form-error">{{ $message }}</p> @enderror
+                                    </div>
+                                </div>
+                            </div>
+                        @endfor
+                        @error('schedule_visitors') <p class="visits-form-error">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div class="visits-modal-footer">
+                        <button type="button" wire:click="previousStep" class="visits-btn visits-btn--secondary">
+                            Back
+                        </button>
+                        <button type="submit" class="visits-btn visits-btn--primary">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            Schedule Visit 
+                        </button>
+                    </div>
+                @endif
             </form>
         </div>
     </div>

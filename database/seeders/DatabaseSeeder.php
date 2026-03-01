@@ -7,7 +7,10 @@ use App\Models\Company;
 use App\Models\Entrance;
 use App\Models\KioskSetting;
 use App\Models\Setting;
+use App\Models\Space;
 use App\Models\User;
+use App\Models\Visit;
+use App\Models\Visitor;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
@@ -15,108 +18,77 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        // Create buildings and entrances
+        $buildings = Building::factory()->count(2)->create()->each(function ($building) {
+            $entrances = Entrance::factory()->count(2)->create(['building_id' => $building->id]);
+            foreach ($entrances as $entrance) {
+                KioskSetting::factory()->create(['entrance_id' => $entrance->id]);
+            }
+            Space::factory()->count(3)->create(['building_id' => $building->id]);
+        });
+
         // Create companies
-        $acmeCompany = Company::create([
+        $acme = Company::factory()->create([
             'name' => 'Acme Corporation',
-            'address' => '123 Business Street, City, Country',
-            'phone' => '+1 234 567 890',
             'email' => 'info@acme.com',
-            'contact_person' => 'John Smith',
-            'is_active' => true,
         ]);
 
-        $techCompany = Company::create([
+        $subCompany = Company::factory()->create([
+            'name' => 'Acme Sub-Division',
+            'parent_id' => $acme->id,
+        ]);
+
+        $techSolutions = Company::factory()->create([
             'name' => 'Tech Solutions Ltd',
-            'address' => '456 Innovation Avenue, Tech City',
-            'phone' => '+1 555 123 4567',
-            'email' => 'contact@techsolutions.com',
-            'contact_person' => 'Jane Doe',
-            'is_active' => true,
         ]);
 
-        $globalCompany = Company::create([
-            'name' => 'Global Services Inc',
-            'address' => '789 Enterprise Road, Metro City',
-            'phone' => '+1 888 999 0000',
-            'email' => 'hello@globalservices.io',
-            'contact_person' => 'Bob Johnson',
-            'is_active' => true,
-        ]);
-
-        // Create admin user
-        User::create([
+        // Create users for Acme
+        $admin = User::factory()->create([
             'name' => 'Admin User',
             'email' => 'admin@example.com',
-            'password' => Hash::make('password'),
             'role' => 'admin',
-            'is_active' => true,
-            'company_id' => $acmeCompany->id,
+            'company_id' => $acme->id,
         ]);
 
-        // Create receptionist user
-        User::create([
+        $receptionist = User::factory()->create([
             'name' => 'Receptionist',
             'email' => 'reception@example.com',
-            'password' => Hash::make('password'),
             'role' => 'receptionist',
-            'is_active' => true,
-            'company_id' => $acmeCompany->id,
+            'company_id' => $acme->id,
         ]);
 
-        // Create buildings
-        $building1 = Building::create([
-            'name' => 'Main Building',
-            'address' => '123 Main Street',
-            'is_active' => true,
+        $manager = User::factory()->create([
+            'name' => 'Company Admin',
+            'email' => 'manager@acme.com',
+            'role' => 'administrator',
+            'company_id' => $acme->id,
         ]);
 
-        $building2 = Building::create([
-            'name' => 'Annex Building',
-            'address' => '456 Side Avenue',
-            'is_active' => true,
+        $subManager = User::factory()->create([
+            'name' => 'Sub-Division Manager',
+            'email' => 'submanager@acme.com',
+            'role' => 'administrator',
+            'company_id' => $subCompany->id,
         ]);
 
-        // Create entrances for each building
-        $entrance1 = Entrance::create([
-            'building_id' => $building1->id,
-            'name' => 'Main Entrance',
-            'kiosk_identifier' => 'main-building-main',
-            'is_active' => true,
-        ]);
+        // Create some random employees
+        User::factory()->count(10)->create(['company_id' => $acme->id, 'role' => 'viewer']);
+        User::factory()->count(5)->create(['company_id' => $techSolutions->id, 'role' => 'viewer']);
 
-        $entrance2 = Entrance::create([
-            'building_id' => $building1->id,
-            'name' => 'Side Entrance',
-            'kiosk_identifier' => 'main-building-side',
-            'is_active' => true,
-        ]);
+        // Create visitors and visits
+        $visitors = Visitor::factory()->count(20)->create();
+        $spaces = Space::all();
+        $entrances = Entrance::all();
+        $hosts = User::where('role', '!=', 'admin')->get();
 
-        $entrance3 = Entrance::create([
-            'building_id' => $building2->id,
-            'name' => 'Front Entrance',
-            'kiosk_identifier' => 'annex-front',
-            'is_active' => true,
-        ]);
-
-        $entrance4 = Entrance::create([
-            'building_id' => $building2->id,
-            'name' => 'Back Entrance',
-            'kiosk_identifier' => 'annex-back',
-            'is_active' => true,
-        ]);
-
-        // Create kiosk settings for each entrance
-        foreach ([$entrance1, $entrance2, $entrance3, $entrance4] as $entrance) {
-            KioskSetting::create([
-                'entrance_id' => $entrance->id,
-                'welcome_message' => 'Welcome! Please check in below.',
-                'background_color' => '#ffffff',
-                'primary_color' => '#3b82f6',
-                'require_photo' => false,
-                'require_signature' => true,
-                'show_nda' => false,
-                'gdpr_text' => 'I consent to the collection and processing of my personal data for the purpose of visitor management, in accordance with the General Data Protection Regulation (GDPR). I understand that my data will be stored securely and used only for the purposes outlined in the privacy policy.',
-                'nda_text' => 'I agree to maintain the confidentiality of any proprietary information I may encounter during my visit. I will not disclose, copy, or use any such information without proper authorization.',
+        foreach ($visitors as $visitor) {
+            Visit::factory()->count(fake()->numberBetween(1, 3))->create([
+                'visitor_id' => $visitor->id,
+                'entrance_id' => $entrances->random()->id,
+                'space_id' => $spaces->random()->id,
+                'host_id' => $hosts->random()->id,
+                'status' => fake()->randomElement(['pending', 'checked_in', 'checked_out']),
+                'check_in_at' => fake()->dateTimeBetween('-1 week', 'now'),
             ]);
         }
 

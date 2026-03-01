@@ -22,6 +22,8 @@ class GdprSettings extends Component
 
     public function mount(): void
     {
+        abort_if(!auth()->user()->isAdmin(), 403);
+
         $firstKiosk = KioskSetting::first();
         $this->default_gdpr_text = $firstKiosk?->gdpr_text ?? 'I consent to the collection and processing of my personal data for the purpose of visitor management, in accordance with the General Data Protection Regulation (GDPR).';
         $this->require_gdpr_consent = true;

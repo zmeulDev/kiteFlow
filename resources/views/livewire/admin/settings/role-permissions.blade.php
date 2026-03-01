@@ -60,9 +60,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($availablePermissions as $permKey => $permLabel)
+                        @foreach($permissionCategories as $categoryName => $permissionsGroup)
+                        {{-- Category Header Row --}}
+                        <tr class="settings-table-row bg-gray-50 dark:bg-gray-800/50">
+                            <td colspan="{{ count($roles) + 1 }}" class="px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700">
+                                {{ $categoryName }}
+                            </td>
+                        </tr>
+                        {{-- Permissions in Category --}}
+                        @foreach($permissionsGroup as $permKey => $permLabel)
                         <tr class="settings-table-row">
-                            <td class="settings-table-cell settings-table-cell--permission">
+                            <td class="settings-table-cell settings-table-cell--permission pl-10">
                                 <div class="settings-permission-info">
                                     <span class="settings-permission-name">{{ $permLabel }}</span>
                                     <span class="settings-permission-key">{{ $permKey }}</span>
@@ -91,6 +99,7 @@
                             </td>
                             @endforeach
                         </tr>
+                        @endforeach
                         @endforeach
                     </tbody>
                 </table>

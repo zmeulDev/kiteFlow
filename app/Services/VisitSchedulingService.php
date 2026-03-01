@@ -25,9 +25,10 @@ class VisitSchedulingService
         Entrance $entrance,
         ?User $host = null,
         ?Company $visitorCompany = null,
-        ?\App\Models\Space $space = null
+        ?\App\Models\Space $space = null,
+        int $peopleCount = 1
     ): Visit {
-        return DB::transaction(function () use ($visitorData, $visitData, $entrance, $host, $visitorCompany, $space) {
+        return DB::transaction(function () use ($visitorData, $visitData, $entrance, $host, $visitorCompany, $space, $peopleCount) {
             // Create or find visitor
             $visitor = Visitor::firstOrCreate(
                 ['email' => $visitorData['email']],
@@ -48,10 +49,12 @@ class VisitSchedulingService
                 'host_name' => $host?->name ?? $visitData['host_name'] ?? null,
                 'host_email' => $host?->email ?? $visitData['host_email'] ?? null,
                 'purpose' => $visitData['purpose'] ?? null,
+                'notes' => $visitData['notes'] ?? null,
                 'status' => 'pending',
                 'qr_code' => $this->qrCodeService->generateQrCode(),
                 'check_in_code' => $checkInCode,
                 'scheduled_at' => $visitData['scheduled_at'] ?? null,
+                'people_count' => $peopleCount,
             ]);
 
             // Load relationships for emails

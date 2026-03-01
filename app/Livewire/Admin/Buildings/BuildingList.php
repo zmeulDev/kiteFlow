@@ -4,6 +4,7 @@ namespace App\Livewire\Admin\Buildings;
 
 use App\Models\Building;
 use App\Models\Entrance;
+use App\Models\User;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -24,6 +25,11 @@ class BuildingList extends Component
     public string $building_address = '';
     public bool $building_is_active = true;
 
+    public function mount(): void
+    {
+        abort_if(!auth()->user()->can('viewBuildings', \App\Models\User::class), 403);
+    }
+
     protected function rules(): array
     {
         return [
@@ -40,12 +46,14 @@ class BuildingList extends Component
 
     public function createBuilding(): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', User::class), 403);
         $this->resetBuildingForm();
         $this->showBuildingModal = true;
     }
 
     public function editBuilding(int $buildingId): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', User::class), 403);
         $building = Building::findOrFail($buildingId);
         $this->editingBuildingId = $building->id;
         $this->building_name = $building->name;
@@ -56,6 +64,7 @@ class BuildingList extends Component
 
     public function saveBuilding()
     {
+        abort_if(!auth()->user()->can('manageBuildings', User::class), 403);
         $this->validate([
             'building_name' => 'required|string|max:255',
             'building_address' => 'nullable|string|max:500',
@@ -110,6 +119,7 @@ class BuildingList extends Component
 
     public function deleteBuilding(int $buildingId): void
     {
+        abort_if(!auth()->user()->can('manageBuildings', User::class), 403);
         $building = Building::findOrFail($buildingId);
         if ($building->entrances()->exists()) {
             session()->flash('error', 'Cannot delete building with entrances. Delete entrances first.');

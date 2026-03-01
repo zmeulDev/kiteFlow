@@ -24,6 +24,11 @@ class CompanyList extends Component
     public string $contact_person = '';
     public bool $is_active = true;
 
+    public function mount(): void
+    {
+        abort_if(!auth()->user()->can('viewCompanies', \App\Models\User::class), 403);
+    }
+
     protected function rules(): array
     {
         return [
@@ -43,15 +48,17 @@ class CompanyList extends Component
 
     public function createCompany(): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $this->resetForm();
         $this->showModal = true;
     }
 
     public function editCompany(int $companyId): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $query = Company::query();
-        if (!auth()->user()->isAdmin()) {
-            $query->where('id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $query->whereIn('id', auth()->user()->getManagedCompanyIds());
         }
         $company = $query->findOrFail($companyId);
         
@@ -67,12 +74,13 @@ class CompanyList extends Component
 
     public function save(): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $this->validate();
 
         if ($this->editingCompanyId) {
             $query = Company::query();
-            if (!auth()->user()->isAdmin()) {
-                $query->where('id', auth()->user()->company_id);
+            if (!auth()->user()->canManageAllTenants()) {
+                $query->whereIn('id', auth()->user()->getManagedCompanyIds());
             }
             $query->findOrFail($this->editingCompanyId)->update([
                 'name' => $this->name,
@@ -84,14 +92,21 @@ class CompanyList extends Component
             ]);
             session()->flash('message', 'Company updated successfully.');
         } else {
-            Company::create([
+            $data = [
                 'name' => $this->name,
                 'address' => $this->address,
                 'phone' => $this->phone,
                 'email' => $this->email,
                 'contact_person' => $this->contact_person,
                 'is_active' => $this->is_active,
-            ]);
+            ];
+
+            // Auto-set parent_id for non-global managers (Company Admin creating sub-tenants)
+            if (!auth()->user()->canManageAllTenants()) {
+                $data['parent_id'] = auth()->user()->company_id;
+            }
+
+            Company::create($data);
             session()->flash('message', 'Company created successfully.');
         }
 
@@ -121,9 +136,10 @@ class CompanyList extends Component
 
     public function deleteCompany(int $companyId): void
     {
+        abort_if(!auth()->user()->can('manageCompanies', \App\Models\User::class), 403);
         $query = Company::query();
-        if (!auth()->user()->isAdmin()) {
-            $query->where('id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $query->whereIn('id', auth()->user()->getManagedCompanyIds());
         }
         $query->findOrFail($companyId)->delete();
         session()->flash('message', 'Company deleted successfully.');
@@ -143,8 +159,8 @@ class CompanyList extends Component
     public function render()
     {
         $query = Company::query();
-        if (!auth()->user()->isAdmin()) {
-            $query->where('id', auth()->user()->company_id);
+        if (!auth()->user()->canManageAllTenants()) {
+            $query->whereIn('id', auth()->user()->getManagedCompanyIds());
         }
 
         $companies = $query->clone()

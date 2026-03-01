@@ -101,6 +101,7 @@
                     @endforeach
                 </select>
             </div>
+            @can('manageUsers', App\Models\User::class)
             <button wire:click="createUser" class="users-add-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -108,6 +109,7 @@
                 </svg>
                 <span>Add User</span>
             </button>
+            @endcan
         </div>
     </div>
 
@@ -194,13 +196,16 @@
             </div>
 
             <div class="user-actions">
-                <button wire:click="editUser({{ $user->id }})" class="user-action-btn user-action-btn--edit">
+                @can('manageUsers', App\Models\User::class)
+                <button wire:click="editUser({{ $user->id }})" class="user-action-btn user-action-btn--edit" title="Edit User">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
                 </button>
+                @endcan
                 @if($user->id !== auth()->id())
+                @can('manageUsers', App\Models\User::class)
                 <button wire:click="showDeleteConfirm({{ $user->id }}, '{{ $user->name }}')" class="user-action-btn user-action-btn--delete">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -209,6 +214,7 @@
                         <line x1="14" y1="11" x2="14" y2="17"></line>
                     </svg>
                 </button>
+                @endcan
                 @endif
             </div>
         </div>
@@ -279,7 +285,7 @@
                     <div class="users-form-field">
                         <label class="users-form-label">Role *</label>
                         <select wire:model="role" class="users-form-input">
-                            @foreach(\App\Models\User::getRoles() as $value => $label)
+                            @foreach(auth()->user()->getAssignableRoles() as $value => $label)
                                 <option value="{{ $value }}">{{ $label }}</option>
                             @endforeach
                         </select>
@@ -289,7 +295,7 @@
                     <div class="users-form-field">
                         <label class="users-form-label">Company</label>
                         <select wire:model="company_id" class="users-form-input">
-                            @if(auth()->user()->isAdmin())
+                            @if(auth()->user()->canManageAllTenants())
                                 <option value="">Global System / {{ \App\Models\Setting::get('business_name', 'Main Business') }}</option>
                             @else
                                 <option value="">Select a company</option>

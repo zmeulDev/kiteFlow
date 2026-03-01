@@ -103,4 +103,28 @@ class KioskControllerTest extends TestCase
 
         $response->assertNotFound();
     }
+
+    public function test_check_in_code_displays_view(): void
+    {
+        $entrance = Entrance::factory()->create(['is_active' => true]);
+        KioskSetting::factory()->create(['entrance_id' => $entrance->id]);
+
+        $response = $this->get("/kiosk/{$entrance->kiosk_identifier}/check-in-code");
+
+        $response->assertOk();
+        $response->assertViewIs('kiosk-check-in-code');
+    }
+
+    public function test_scheduled_check_in_displays_view(): void
+    {
+        $entrance = Entrance::factory()->create(['is_active' => true]);
+        KioskSetting::factory()->create(['entrance_id' => $entrance->id]);
+        $visit = \App\Models\Visit::factory()->create(['entrance_id' => $entrance->id]);
+
+        $response = $this->get("/kiosk/{$entrance->kiosk_identifier}/scheduled-check-in/{$visit->id}");
+
+        $response->assertOk();
+        $response->assertViewIs('kiosk-scheduled-check-in');
+        $response->assertViewHas('visit');
+    }
 }

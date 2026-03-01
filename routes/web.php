@@ -40,7 +40,7 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
         Route::livewire('/business', \App\Livewire\Admin\Settings\BusinessDetails::class)->name('business');
         Route::livewire('/gdpr', \App\Livewire\Admin\Settings\GdprSettings::class)->name('gdpr');
         Route::livewire('/nda', \App\Livewire\Admin\Settings\NdaSettings::class)->name('nda');
-        Route::livewire('/retention', \App\Livewire\Admin\Settings\DataRetention::class)->name('retention');
+
         Route::livewire('/rbac', \App\Livewire\Admin\Settings\RolePermissions::class)->name('rbac');
     });
 

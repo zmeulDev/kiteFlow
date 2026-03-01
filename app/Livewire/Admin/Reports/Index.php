@@ -29,8 +29,8 @@ class Index extends Component
         $user = auth()->user();
         $query = Visit::query();
 
-        // If not a system admin, scope to their company
-        if (!$user->isAdmin()) {
+        // If not a system admin or authorized global manager, scope to their company
+        if (!$user->canManageAllTenants()) {
             if ($user->role === 'viewer') {
                 $query->where('host_id', $user->id);
             } else {
@@ -86,8 +86,8 @@ class Index extends Component
                 ];
             })->toArray();
 
-        // Load companies (God Mode only)
-        if ($user->isAdmin()) {
+        // Load companies (Global roles only)
+        if ($user->canManageAllTenants()) {
             $this->visitsByCompany = (clone $query)
                 ->selectRaw('companies.name as company_name, count(visits.id) as count')
                 ->join('users', 'visits.host_id', '=', 'users.id')

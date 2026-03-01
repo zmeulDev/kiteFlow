@@ -22,18 +22,23 @@ class VisitService
                     'first_name' => $visitorData['first_name'],
                     'last_name' => $visitorData['last_name'],
                 ],
-                $visitorData
+                array_merge($visitorData, [
+                    'company_id' => $visitData['company_id'] ?? null,
+                ])
             );
 
             $visit = Visit::create([
                 'visitor_id' => $visitor->id,
                 'entrance_id' => $entrance->id,
+                'space_id' => $visitData['space_id'] ?? null,
                 'host_id' => $visitData['host_id'] ?? null,
                 'host_name' => $visitData['host_name'] ?? null,
                 'host_email' => $visitData['host_email'] ?? null,
                 'purpose' => $visitData['purpose'] ?? null,
                 'status' => 'pending',
                 'qr_code' => $this->qrCodeService->generateQrCode(),
+                'check_in_code' => strtoupper(\Illuminate\Support\Str::random(6)),
+                'scheduled_at' => $visitData['scheduled_at'] ?? null,
             ]);
 
             return $visit;

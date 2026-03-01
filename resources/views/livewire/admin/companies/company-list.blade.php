@@ -81,6 +81,7 @@
                 </svg>
                 <input type="text" wire:model.live.debounce.300ms="search" placeholder="Search companies by name or contact...">
             </div>
+            @can('manageCompanies', App\Models\User::class)
             <button wire:click="createCompany" class="companies-add-btn">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -88,6 +89,7 @@
                 </svg>
                 <span>Add Company</span>
             </button>
+            @endcan
         </div>
     </div>
 
@@ -141,13 +143,22 @@
                 @endif
             </div>
 
+            @can('viewCompanies', App\Models\User::class)
             <div class="company-actions">
-                <a href="{{ route('admin.companies.edit', $company) }}" class="company-action-btn company-action-btn--edit">
+                <a href="{{ route('admin.companies.edit', $company) }}" class="company-action-btn company-action-btn--edit" title="{{ auth()->user()->can('manageCompanies', App\Models\User::class) ? 'Manage Company' : 'View Details' }}">
+                    @if(auth()->user()->can('manageCompanies', App\Models\User::class))
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                     </svg>
+                    @else
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                        <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    @endif
                 </a>
+                @can('manageCompanies', App\Models\User::class)
                 <button wire:click="showDeleteConfirm({{ $company->id }}, '{{ $company->name }}')" class="company-action-btn company-action-btn--delete">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polyline points="3 6 5 6 21 6"></polyline>
@@ -156,7 +167,9 @@
                         <line x1="14" y1="11" x2="14" y2="17"></line>
                     </svg>
                 </button>
+                @endcan
             </div>
+            @endcan
         </div>
         @empty
         <div class="companies-empty">
